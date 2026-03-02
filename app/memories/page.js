@@ -104,7 +104,7 @@ export default function MemoriesPage() {
                     </svg>
                     <p className="memories-empty-title">No memories yet</p>
                     <p className="memories-empty-desc">
-                        Chat with Cesy and she'll remember important things about you — your preferences, goals, and more.
+                        Chat with Cesy and she&apos;ll remember important things about you — your preferences, goals, and more.
                     </p>
                 </div>
             ) : (
