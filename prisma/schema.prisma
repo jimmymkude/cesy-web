@@ -28,6 +28,8 @@ model UserProfile {
   threads     ChatThread[]
   usageStats  UsageStats[]
   assistants  StoredAssistant[]
+  memories    Memory[]
+  workoutSchedule WorkoutSchedule?
 
   @@map("user_profiles")
 }
@@ -92,4 +94,28 @@ model StoredAssistant {
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("stored_assistants")
+}
+
+model Memory {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  content   String
+  tags      Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("memories")
+}
+
+model WorkoutSchedule {
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  schedule    Json     // Array of { dayOfWeek, workoutType, duration, equipment }
+  lastUpdated DateTime @default(now()) @map("last_updated")
+  rawResponse String?  @map("raw_response")
+
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("workout_schedules")
 }

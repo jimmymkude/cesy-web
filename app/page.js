@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChatProvider, useChat } from '@/contexts/ChatContext';
+import { useChat } from '@/contexts/ChatContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 
@@ -12,8 +12,6 @@ function ChatArea() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-
-
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -156,10 +154,8 @@ export default function Home() {
   }
 
   return (
-    <ChatProvider>
-      <AppShell>
-        <ChatArea />
-      </AppShell>
-    </ChatProvider>
+    <AppShell>
+      <ChatArea />
+    </AppShell>
   );
 }
