@@ -12,7 +12,6 @@ export function ChatProvider({ children }) {
     const [messages, setMessages] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-    const memoriesRef = useRef([]);
     const workoutRef = useRef(null);
     const dbUserIdRef = useRef(null);
 
@@ -36,16 +35,9 @@ export function ChatProvider({ children }) {
                 dbUserIdRef.current = syncData.user.id;
             }
 
-            // Fetch memories and workout schedule
+            // Fetch workout schedule
             if (dbUserIdRef.current) {
-                const [memRes, workoutRes] = await Promise.all([
-                    fetch(`/api/memories?userId=${dbUserIdRef.current}&limit=20`),
-                    fetch(`/api/workout?userId=${dbUserIdRef.current}`),
-                ]);
-                const memData = await memRes.json();
-                if (memData.memories) {
-                    memoriesRef.current = memData.memories;
-                }
+                const workoutRes = await fetch(`/api/workout?userId=${dbUserIdRef.current}`);
                 const workoutData = await workoutRes.json();
                 if (workoutData.schedule) {
                     workoutRef.current = workoutData.schedule;
@@ -56,19 +48,15 @@ export function ChatProvider({ children }) {
         }
     }, [user]);
 
-    // Build system prompt with memories and workout schedule injected
+    // Build system prompt — memories are now handled by LLM tools
     const buildSystemPrompt = useCallback(() => {
         let prompt = `Your name is Cesy. ${ASSISTANT.instructions}`;
 
         // Schedule formatting instructions
         prompt += `\n\nIMPORTANT: When creating or showing a workout schedule, ALWAYS format each day exactly like this:\n- Day: Workout Type, Duration minutes (Equipment: item1, item2)\nFor example:\n- Monday: Basketball drills, 30 minutes (Equipment: Basketball, Court)\n- Tuesday: Strength training, 45 minutes (Equipment: Dumbbells, Bench)\nThis exact format is required so the app can parse and save the schedule automatically.`;
 
-        if (memoriesRef.current.length > 0) {
-            const memoryLines = memoriesRef.current
-                .map((m) => `- ${m.content}`)
-                .join('\n');
-            prompt += `\n\nHere are things you remember about this user:\n${memoryLines}\n\nUse these memories to personalize your responses. If the user tells you something new about themselves, mention it naturally.`;
-        }
+        // Memory tool instructions
+        prompt += `\n\nYou have access to memory tools. Use save_memory to remember important facts about the user (preferences, goals, habits, personal info). Use search_memories to recall previously saved information when it would help personalize your response. Be proactive about saving new facts and searching for context.`;
 
         // Inject saved workout schedule
         if (workoutRef.current?.schedule?.length > 0) {
@@ -84,39 +72,6 @@ export function ChatProvider({ children }) {
 
         return prompt;
     }, [user]);
-
-    // Extract and save memories from conversation
-    const extractMemories = useCallback(async (userMessage, assistantResponse) => {
-        if (!dbUserIdRef.current) return;
-
-        // Simple heuristic: save user preferences, facts, and schedule info
-        const patterns = [
-            /(?:i (?:like|love|prefer|enjoy|hate|dislike))\s+(.+)/i,
-            /(?:my (?:name|goal|weight|height|age) is)\s+(.+)/i,
-            /(?:i (?:am|was|have|want|need))\s+(.+)/i,
-            /(?:i (?:work out|exercise|train|run|lift))\s+(.+)/i,
-        ];
-
-        for (const pattern of patterns) {
-            const match = userMessage.match(pattern);
-            if (match) {
-                try {
-                    await fetch('/api/memories', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: dbUserIdRef.current,
-                            content: userMessage,
-                            tags: ['auto-extracted', 'preference'],
-                        }),
-                    });
-                } catch (e) {
-                    console.error('Failed to save memory:', e);
-                }
-                break; // One memory per message
-            }
-        }
-    }, []);
 
     // Check if response contains a workout schedule and save it
     const checkForSchedule = useCallback(async (response) => {
@@ -164,6 +119,7 @@ export function ChatProvider({ children }) {
                 body: JSON.stringify({
                     messages: apiMessages,
                     systemPrompt: buildSystemPrompt(),
+                    userId: dbUserIdRef.current,
                 }),
             });
 
@@ -182,8 +138,7 @@ export function ChatProvider({ children }) {
             };
             setMessages((prev) => [...prev, assistantMsg]);
 
-            // Background tasks: extract memories + check for workout schedule
-            extractMemories(text, data.message);
+            // Check for workout schedule in response
             checkForSchedule(data.message);
 
             return data;
@@ -193,7 +148,7 @@ export function ChatProvider({ children }) {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, isLoading, user, ensureUserData, buildSystemPrompt, extractMemories, checkForSchedule]);
+    }, [messages, isLoading, user, ensureUserData, buildSystemPrompt, checkForSchedule]);
 
     const clearChat = useCallback(() => {
         setMessages([]);
