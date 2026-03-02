@@ -50,7 +50,10 @@ export function ChatProvider({ children }) {
 
     // Build system prompt — memories are now handled by LLM tools
     const buildSystemPrompt = useCallback(() => {
-        let prompt = `Your name is Cesy. ${ASSISTANT.instructions}`;
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\nCurrent date and time: ${dateStr}, ${timeStr}.`;
 
         // Schedule formatting instructions
         prompt += `\n\nIMPORTANT: When creating or showing a workout schedule, ALWAYS format each day exactly like this:\n- Day: Workout Type, Duration minutes (Equipment: item1, item2)\nFor example:\n- Monday: Basketball drills, 30 minutes (Equipment: Basketball, Court)\n- Tuesday: Strength training, 45 minutes (Equipment: Dumbbells, Bench)\nThis exact format is required so the app can parse and save the schedule automatically.`;

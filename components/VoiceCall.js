@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { VOICE, STORAGE_KEYS, ASSISTANT } from '@/lib/constants';
+import { parseScheduleFromResponse } from '@/lib/scheduleParser';
 
 /**
  * VoiceCall — A call-like voice interface for Cesy.
@@ -23,6 +24,7 @@ export default function VoiceCall({ onClose }) {
     const finalTranscriptRef = useRef('');
     const voiceHistoryRef = useRef([]); // independent conversation history
     const dbUserIdRef = useRef(null);
+    const workoutRef = useRef(null);
 
     useEffect(() => {
         setIsSupported(
@@ -30,7 +32,7 @@ export default function VoiceCall({ onClose }) {
         );
     }, []);
 
-    // Sync user to get DB user ID
+    // Sync user to get DB user ID and fetch workout schedule
     useEffect(() => {
         if (!user) return;
         fetch('/api/auth/sync', {
@@ -44,7 +46,17 @@ export default function VoiceCall({ onClose }) {
             }),
         })
             .then((r) => r.json())
-            .then((d) => { if (d.user?.id) dbUserIdRef.current = d.user.id; })
+            .then(async (d) => {
+                if (d.user?.id) {
+                    dbUserIdRef.current = d.user.id;
+                    // Fetch workout schedule
+                    try {
+                        const wRes = await fetch(`/api/workout?userId=${d.user.id}`);
+                        const wData = await wRes.json();
+                        if (wData.schedule) workoutRef.current = wData.schedule;
+                    } catch { /* ignore */ }
+                }
+            })
             .catch(() => { });
     }, [user]);
 
@@ -149,11 +161,28 @@ export default function VoiceCall({ onClose }) {
         setCallState('thinking');
 
         // Build voice-optimized system prompt
-        const systemPrompt = `Your name is Cesy. ${ASSISTANT.instructions}
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        let systemPrompt = `Your name is Cesy. ${ASSISTANT.instructions}
+
+Current date and time: ${dateStr}, ${timeStr}.
 
 IMPORTANT: You are in a VOICE CALL. Keep responses SHORT and conversational — 1-3 sentences max. No markdown, no bullet points, no formatting. Speak naturally as if on a phone call.${user?.displayName ? `\n\nThe user's name is ${user.displayName}.` : ''}
 
-You have access to memory tools. Use save_memory to remember important facts about the user. Use search_memories to recall previously saved information.`;
+You have access to memory tools. Use save_memory to remember important facts about the user. Use search_memories to recall previously saved information.
+
+IMPORTANT: When creating or showing a workout schedule, ALWAYS format each day exactly like this:
+- Day: Workout Type, Duration minutes (Equipment: item1, item2)
+This exact format is required so the app can parse and save the schedule automatically.`;
+
+        // Inject saved workout schedule
+        if (workoutRef.current?.schedule?.length > 0) {
+            const scheduleLines = workoutRef.current.schedule
+                .map((w) => `- ${w.dayName}: ${w.workoutType}, ${w.duration} minutes${w.equipment?.length ? ` (Equipment: ${w.equipment.join(', ')})` : ''}`)
+                .join('\n');
+            systemPrompt += `\n\nThe user's current workout schedule is:\n${scheduleLines}\n\nReference this schedule when asked about workouts.`;
+        }
 
         // Add user message to voice history
         voiceHistoryRef.current.push({ role: 'user', content: text });
@@ -178,6 +207,23 @@ You have access to memory tools. Use save_memory to remember important facts abo
             if (data.message) {
                 // Add assistant response to voice history
                 voiceHistoryRef.current.push({ role: 'assistant', content: data.message });
+
+                // Check for workout schedule in response and save it
+                if (dbUserIdRef.current) {
+                    const schedule = parseScheduleFromResponse(data.message);
+                    if (schedule) {
+                        fetch('/api/workout', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: dbUserIdRef.current,
+                                schedule,
+                                rawResponse: data.message,
+                            }),
+                        }).catch(() => { });
+                    }
+                }
+
                 speakResponse(data.message);
             } else {
                 setCallState('idle');
