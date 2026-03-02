@@ -12,6 +12,7 @@ const customJestConfig = {
     collectCoverageFrom: [
         'lib/**/*.js',
         'app/api/**/*.js',
+        'app/memories/**/*.js',
         'contexts/**/*.js',
         'components/**/*.js',
         '!lib/prisma.js',
