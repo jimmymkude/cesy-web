@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useChat } from '@/contexts/ChatContext';
-import { VOICE, STORAGE_KEYS } from '@/lib/constants';
+import { useAuth } from '@/contexts/AuthContext';
+import { VOICE, STORAGE_KEYS, ASSISTANT } from '@/lib/constants';
 
 /**
  * VoiceCall — A call-like voice interface for Cesy.
- * Tap the mic → speak → Cesy responds with voice via ElevenLabs.
+ * Calls /api/chat directly (bypasses ChatContext to avoid isLoading guards).
  */
 export default function VoiceCall({ onClose }) {
-    const { sendMessage } = useChat();
-    const [callState, setCallState] = useState('idle'); // idle | listening | thinking | speaking
+    const { user } = useAuth();
+    const [callState, setCallState] = useState('idle');
     const [transcript, setTranscript] = useState('');
     const [cesyResponse, setCesyResponse] = useState('');
     const [error, setError] = useState(null);
@@ -21,13 +21,32 @@ export default function VoiceCall({ onClose }) {
     const animFrameRef = useRef(null);
     const canvasRef = useRef(null);
     const finalTranscriptRef = useRef('');
+    const voiceHistoryRef = useRef([]); // independent conversation history
+    const dbUserIdRef = useRef(null);
 
-    // Check browser support on mount
     useEffect(() => {
         setIsSupported(
             'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
         );
     }, []);
+
+    // Sync user to get DB user ID
+    useEffect(() => {
+        if (!user) return;
+        fetch('/api/auth/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                firebaseUid: user.uid,
+                email: user.email,
+                fullName: user.displayName,
+                avatarUrl: user.photoURL,
+            }),
+        })
+            .then((r) => r.json())
+            .then((d) => { if (d.user?.id) dbUserIdRef.current = d.user.id; })
+            .catch(() => { });
+    }, [user]);
 
     // Draw visualizer
     const drawVisualizer = useCallback((active) => {
@@ -39,7 +58,6 @@ export default function VoiceCall({ onClose }) {
 
         const draw = () => {
             ctx.clearRect(0, 0, W, H);
-
             const bars = 32;
             const barW = W / bars - 2;
             const cy = H / 2;
@@ -60,7 +78,6 @@ export default function VoiceCall({ onClose }) {
                 ctx.roundRect(x, cy - h / 2, barW, h, 3);
                 ctx.fill();
             }
-
             animFrameRef.current = requestAnimationFrame(draw);
         };
         draw();
@@ -74,7 +91,7 @@ export default function VoiceCall({ onClose }) {
         };
     }, [callState, drawVisualizer]);
 
-    // Play TTS response via ElevenLabs
+    // Play TTS via ElevenLabs
     const speakResponse = useCallback(async (text) => {
         setCallState('speaking');
         setCesyResponse(text);
@@ -88,7 +105,10 @@ export default function VoiceCall({ onClose }) {
                 body: JSON.stringify({ voiceId, text }),
             });
 
-            if (!res.ok) throw new Error('TTS failed');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `TTS failed (${res.status})`);
+            }
 
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -115,11 +135,11 @@ export default function VoiceCall({ onClose }) {
         } catch (e) {
             console.error('TTS error:', e);
             setCallState('idle');
-            setError('Voice synthesis failed');
+            setError('Voice synthesis failed: ' + e.message);
         }
     }, []);
 
-    // Process the transcript — send to Claude and speak response
+    // Send to Claude directly (no ChatContext dependency)
     const processTranscript = useCallback(async (text) => {
         if (!text.trim()) {
             setCallState('idle');
@@ -127,18 +147,48 @@ export default function VoiceCall({ onClose }) {
         }
 
         setCallState('thinking');
+
+        // Build voice-optimized system prompt
+        const systemPrompt = `Your name is Cesy. ${ASSISTANT.instructions}
+
+IMPORTANT: You are in a VOICE CALL. Keep responses SHORT and conversational — 1-3 sentences max. No markdown, no bullet points, no formatting. Speak naturally as if on a phone call.${user?.displayName ? `\n\nThe user's name is ${user.displayName}.` : ''}
+
+You have access to memory tools. Use save_memory to remember important facts about the user. Use search_memories to recall previously saved information.`;
+
+        // Add user message to voice history
+        voiceHistoryRef.current.push({ role: 'user', content: text });
+
         try {
-            const data = await sendMessage(text.trim());
-            if (data?.message) {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: voiceHistoryRef.current,
+                    systemPrompt,
+                    userId: dbUserIdRef.current,
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Chat failed');
+            }
+
+            if (data.message) {
+                // Add assistant response to voice history
+                voiceHistoryRef.current.push({ role: 'assistant', content: data.message });
                 speakResponse(data.message);
             } else {
                 setCallState('idle');
+                setError('No response from Cesy');
             }
-        } catch {
+        } catch (e) {
+            console.error('Voice chat error:', e);
             setCallState('idle');
-            setError('Failed to get response');
+            setError('Failed to get response: ' + e.message);
         }
-    }, [sendMessage, speakResponse]);
+    }, [user, speakResponse]);
 
     // Start listening
     const startListening = useCallback(() => {
@@ -171,18 +221,12 @@ export default function VoiceCall({ onClose }) {
             }
             const display = final || interim;
             setTranscript(display);
-            // Store final transcript in ref for onend to use
-            if (final) {
-                finalTranscriptRef.current = final;
-            } else {
-                finalTranscriptRef.current = interim;
-            }
+            finalTranscriptRef.current = final || interim;
         };
 
         recognition.onend = () => {
             recognitionRef.current = null;
-            const text = finalTranscriptRef.current;
-            processTranscript(text);
+            processTranscript(finalTranscriptRef.current);
         };
 
         recognition.onerror = (event) => {
@@ -210,14 +254,12 @@ export default function VoiceCall({ onClose }) {
         }
     }, [isSupported, processTranscript]);
 
-    // Stop listening
     const stopListening = useCallback(() => {
         if (recognitionRef.current) {
             recognitionRef.current.stop();
         }
     }, []);
 
-    // Stop everything
     const endCall = useCallback(() => {
         if (recognitionRef.current) {
             recognitionRef.current.abort();
@@ -230,6 +272,7 @@ export default function VoiceCall({ onClose }) {
         if (animFrameRef.current) {
             cancelAnimationFrame(animFrameRef.current);
         }
+        voiceHistoryRef.current = [];
         setCallState('idle');
         setTranscript('');
         setCesyResponse('');
@@ -240,7 +283,6 @@ export default function VoiceCall({ onClose }) {
         if (callState === 'listening') {
             stopListening();
         } else if (callState === 'speaking') {
-            // Interrupt — stop audio and start listening
             if (audioRef.current) {
                 audioRef.current.pause();
                 audioRef.current = null;
@@ -261,19 +303,16 @@ export default function VoiceCall({ onClose }) {
     return (
         <div className="voice-call-overlay">
             <div className="voice-call-container">
-                {/* Header */}
                 <div className="voice-call-header">
                     <div className="voice-call-avatar">C</div>
                     <div className="voice-call-name">Cesy</div>
                     <div className="voice-call-status">{statusText[callState]}</div>
                 </div>
 
-                {/* Visualizer */}
                 <div className="voice-call-visualizer">
                     <canvas ref={canvasRef} width={300} height={80} />
                 </div>
 
-                {/* Transcript / Response */}
                 <div className="voice-call-text">
                     {transcript && (
                         <div className="voice-call-transcript">
@@ -289,7 +328,6 @@ export default function VoiceCall({ onClose }) {
                     )}
                 </div>
 
-                {/* Not supported warning */}
                 {!isSupported && (
                     <div style={{
                         color: 'var(--color-warning)',
@@ -301,7 +339,6 @@ export default function VoiceCall({ onClose }) {
                     </div>
                 )}
 
-                {/* Error */}
                 {error && (
                     <div style={{
                         color: 'var(--color-error)',
@@ -313,7 +350,6 @@ export default function VoiceCall({ onClose }) {
                     </div>
                 )}
 
-                {/* Controls */}
                 <div className="voice-call-controls">
                     <button
                         className={`voice-call-mic ${callState === 'listening' ? 'voice-call-mic-active' : ''} ${callState === 'speaking' ? 'voice-call-mic-active' : ''} ${callState === 'thinking' ? 'voice-call-mic-disabled' : ''}`}
