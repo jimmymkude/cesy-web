@@ -13,6 +13,7 @@ export function ChatProvider({ children }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const memoriesRef = useRef([]);
+    const workoutRef = useRef(null);
     const dbUserIdRef = useRef(null);
 
     // Fetch the DB user ID and memories
@@ -35,12 +36,19 @@ export function ChatProvider({ children }) {
                 dbUserIdRef.current = syncData.user.id;
             }
 
-            // Fetch memories
+            // Fetch memories and workout schedule
             if (dbUserIdRef.current) {
-                const memRes = await fetch(`/api/memories?userId=${dbUserIdRef.current}&limit=20`);
+                const [memRes, workoutRes] = await Promise.all([
+                    fetch(`/api/memories?userId=${dbUserIdRef.current}&limit=20`),
+                    fetch(`/api/workout?userId=${dbUserIdRef.current}`),
+                ]);
                 const memData = await memRes.json();
                 if (memData.memories) {
                     memoriesRef.current = memData.memories;
+                }
+                const workoutData = await workoutRes.json();
+                if (workoutData.schedule) {
+                    workoutRef.current = workoutData.schedule;
                 }
             }
         } catch (e) {
@@ -48,15 +56,26 @@ export function ChatProvider({ children }) {
         }
     }, [user]);
 
-    // Build system prompt with memories injected
+    // Build system prompt with memories and workout schedule injected
     const buildSystemPrompt = useCallback(() => {
         let prompt = `Your name is Cesy. ${ASSISTANT.instructions}`;
+
+        // Schedule formatting instructions
+        prompt += `\n\nIMPORTANT: When creating or showing a workout schedule, ALWAYS format each day exactly like this:\n- Day: Workout Type, Duration minutes (Equipment: item1, item2)\nFor example:\n- Monday: Basketball drills, 30 minutes (Equipment: Basketball, Court)\n- Tuesday: Strength training, 45 minutes (Equipment: Dumbbells, Bench)\nThis exact format is required so the app can parse and save the schedule automatically.`;
 
         if (memoriesRef.current.length > 0) {
             const memoryLines = memoriesRef.current
                 .map((m) => `- ${m.content}`)
                 .join('\n');
             prompt += `\n\nHere are things you remember about this user:\n${memoryLines}\n\nUse these memories to personalize your responses. If the user tells you something new about themselves, mention it naturally.`;
+        }
+
+        // Inject saved workout schedule
+        if (workoutRef.current?.schedule?.length > 0) {
+            const scheduleLines = workoutRef.current.schedule
+                .map((w) => `- ${w.dayName}: ${w.workoutType}, ${w.duration} minutes${w.equipment?.length ? ` (Equipment: ${w.equipment.join(', ')})` : ''}`)
+                .join('\n');
+            prompt += `\n\nThe user's current workout schedule is:\n${scheduleLines}\n\nReference this schedule when the user asks about their workouts. If they ask to modify it, output the full updated schedule in the required format.`;
         }
 
         if (user?.displayName) {
