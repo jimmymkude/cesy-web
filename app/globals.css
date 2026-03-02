@@ -5,23 +5,23 @@
 
 /* --- CSS Reset & Variables --- */
 :root {
-  /* Color palette — matches Hakika/Tanzasoft */
-  --color-bg-primary: #050505;
-  --color-bg-secondary: #0a0a0a;
-  --color-bg-tertiary: #111111;
-  --color-bg-card: #0f0f0f;
-  --color-bg-hover: #1a1a1a;
-  --color-bg-input: #111111;
+  /* Color palette — Apple sleek dark mode meets Hakika blue */
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #0a0a0c;
+  --color-bg-tertiary: #141416;
+  --color-bg-card: #0c0c0e;
+  --color-bg-hover: #1c1c1e;
+  --color-bg-input: #121214;
 
-  --color-text-primary: #f0f0f5;
-  --color-text-secondary: #a0a0b8;
-  --color-text-muted: #6a6a80;
-  --color-text-inverse: #0a0a0f;
+  --color-text-primary: rgba(255, 255, 255, 0.95);
+  --color-text-secondary: rgba(235, 235, 245, 0.6);
+  --color-text-muted: rgba(235, 235, 245, 0.3);
+  --color-text-inverse: #000000;
 
   --color-accent: #2563eb;
   --color-accent-hover: #3b82f6;
   --color-accent-soft: rgba(37, 99, 235, 0.15);
-  --color-accent-glow: rgba(37, 99, 235, 0.4);
+  --color-accent-glow: rgba(37, 99, 235, 0.3);
 
   --color-success: #00d2b4;
   --color-success-soft: rgba(0, 210, 180, 0.12);
@@ -31,15 +31,15 @@
 
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-hover: rgba(255, 255, 255, 0.15);
-  --color-divider: rgba(255, 255, 255, 0.05);
+  --color-divider: rgba(255, 255, 255, 0.04);
 
-  /* Gradients — cleaner */
-  --gradient-accent: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-  --gradient-card: linear-gradient(145deg, rgba(15, 15, 15, 0.9), rgba(10, 10, 10, 0.6));
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  /* Gradients — ultra sleek */
+  --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-card: linear-gradient(145deg, rgba(20, 20, 22, 0.8), rgba(10, 10, 12, 0.4));
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
 
   /* Typography */
-  --font-sans: 'Inter', var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
   --font-mono: 'Geist Mono', var(--font-geist-mono), 'SF Mono', 'Fira Code', monospace;
 
   --text-xs: 0.75rem;
@@ -98,28 +98,28 @@
 
 /* --- Light Mode Override --- */
 [data-theme="light"] {
-  --color-bg-primary: #fafafa;
+  --color-bg-primary: #f5f5f7;
   --color-bg-secondary: #ffffff;
-  --color-bg-tertiary: #f5f5f5;
+  --color-bg-tertiary: #ebebf0;
   --color-bg-card: #ffffff;
-  --color-bg-hover: #f0f0f0;
-  --color-bg-input: #f5f5f5;
+  --color-bg-hover: #e5e5ea;
+  --color-bg-input: #ebebf0;
 
-  --color-text-primary: #111111;
-  --color-text-secondary: #555555;
-  --color-text-muted: #999999;
-  --color-text-inverse: #fafafa;
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #86868b;
+  --color-text-muted: #d1d1d6;
+  --color-text-inverse: #ffffff;
 
   --color-border: rgba(0, 0, 0, 0.08);
   --color-border-hover: rgba(0, 0, 0, 0.15);
-  --color-divider: rgba(0, 0, 0, 0.05);
+  --color-divider: rgba(0, 0, 0, 0.04);
 
-  --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(250, 250, 250, 0.7));
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+  --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(250, 250, 250, 0.8));
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5));
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 /* --- Global Styles --- */
@@ -215,7 +215,9 @@ a:hover {
 .btn-primary {
   background: var(--gradient-accent);
   color: white;
-  box-shadow: var(--shadow-sm), 0 0 0 0 var(--color-accent-glow);
+  border: none;
+  font-weight: var(--weight-medium);
+  box-shadow: 0 2px 10px var(--color-accent-glow);
 }
 
 .btn-primary:hover {
@@ -299,9 +301,9 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--color-bg-primary);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--color-border);
   height: var(--nav-height);
 }
@@ -331,22 +333,13 @@ a:hover {
 }
 
 .top-nav-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--gradient-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: var(--weight-bold);
-  font-size: var(--text-sm);
+  flex-shrink: 0;
 }
 
 .top-nav-logo-img {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
 }
 
@@ -447,9 +440,9 @@ a:hover {
   right: 0;
   z-index: 50;
   height: var(--tab-height);
-  background: var(--color-bg-primary);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -477,7 +470,7 @@ a:hover {
 }
 
 .tab-active {
-  color: var(--color-accent) !important;
+  color: var(--color-text-primary) !important;
 }
 
 .tab-active .tab-icon {
@@ -737,17 +730,11 @@ a:hover {
 }
 
 .login-logo {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-lg);
-  background: var(--gradient-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: var(--weight-bold);
-  font-size: var(--text-2xl);
-  margin: 0 auto var(--space-4);
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: var(--space-4);
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.1));
 }
 
 .login-title {
