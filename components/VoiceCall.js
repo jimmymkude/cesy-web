@@ -25,6 +25,7 @@ export default function VoiceCall({ onClose }) {
     const voiceHistoryRef = useRef([]); // independent conversation history
     const dbUserIdRef = useRef(null);
     const workoutRef = useRef(null);
+    const syncPromiseRef = useRef(null);
 
     useEffect(() => {
         setIsSupported(
@@ -35,29 +36,29 @@ export default function VoiceCall({ onClose }) {
     // Sync user to get DB user ID and fetch workout schedule
     useEffect(() => {
         if (!user) return;
-        fetch('/api/auth/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                firebaseUid: user.uid,
-                email: user.email,
-                fullName: user.displayName,
-                avatarUrl: user.photoURL,
-            }),
-        })
-            .then((r) => r.json())
-            .then(async (d) => {
+        syncPromiseRef.current = (async () => {
+            try {
+                const syncRes = await fetch('/api/auth/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        firebaseUid: user.uid,
+                        email: user.email,
+                        fullName: user.displayName,
+                        avatarUrl: user.photoURL,
+                    }),
+                });
+                const d = await syncRes.json();
                 if (d.user?.id) {
                     dbUserIdRef.current = d.user.id;
-                    // Fetch workout schedule
                     try {
                         const wRes = await fetch(`/api/workout?userId=${d.user.id}`);
                         const wData = await wRes.json();
                         if (wData.schedule) workoutRef.current = wData.schedule;
                     } catch { /* ignore */ }
                 }
-            })
-            .catch(() => { });
+            } catch { /* ignore */ }
+        })();
     }, [user]);
 
     // Draw visualizer
@@ -159,6 +160,11 @@ export default function VoiceCall({ onClose }) {
         }
 
         setCallState('thinking');
+
+        // Ensure sync is complete before proceeding
+        if (syncPromiseRef.current) {
+            await syncPromiseRef.current;
+        }
 
         // Build voice-optimized system prompt
         const now = new Date();
