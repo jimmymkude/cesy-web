@@ -18,6 +18,8 @@
   --color-text-muted: rgba(235, 235, 245, 0.3);
   --color-text-inverse: #000000;
 
+  --color-bg-glass: rgba(0, 0, 0, 0.6);
+
   --color-accent: #2563eb;
   --color-accent-hover: #3b82f6;
   --color-accent-soft: rgba(37, 99, 235, 0.15);
@@ -109,6 +111,8 @@
   --color-text-secondary: #86868b;
   --color-text-muted: #d1d1d6;
   --color-text-inverse: #ffffff;
+
+  --color-bg-glass: rgba(255, 255, 255, 0.75);
 
   --color-border: rgba(0, 0, 0, 0.08);
   --color-border-hover: rgba(0, 0, 0, 0.15);
@@ -301,7 +305,7 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--color-bg-glass);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--color-border);
@@ -440,7 +444,7 @@ a:hover {
   right: 0;
   z-index: 50;
   height: var(--tab-height);
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--color-bg-glass);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--color-border);
