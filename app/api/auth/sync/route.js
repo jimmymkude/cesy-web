@@ -13,27 +13,41 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Missing firebaseUid' }, { status: 400 });
         }
 
-        const user = await prisma.userProfile.upsert({
-            where: { firebaseUid },
-            update: {
-                email: email || undefined,
-                fullName: fullName || undefined,
-                avatarUrl: avatarUrl || undefined,
-            },
-            create: {
-                firebaseUid,
-                email,
-                fullName,
-                avatarUrl,
-                settings: {
-                    create: {
-                        assistantName: 'Cesy',
-                        darkMode: true,
+        let user;
+        try {
+            user = await prisma.userProfile.upsert({
+                where: { firebaseUid },
+                update: {
+                    email: email || undefined,
+                    fullName: fullName || undefined,
+                    avatarUrl: avatarUrl || undefined,
+                },
+                create: {
+                    firebaseUid,
+                    email,
+                    fullName,
+                    avatarUrl,
+                    settings: {
+                        create: {
+                            assistantName: 'Cesy',
+                            darkMode: true,
+                        },
                     },
                 },
-            },
-            include: { settings: true },
-        });
+                include: { settings: true },
+            });
+        } catch (upsertError) {
+            // Handle race condition: if two requests hit simultaneously,
+            // the second one may fail with P2002. Just fetch the existing user.
+            if (upsertError.code === 'P2002') {
+                user = await prisma.userProfile.findUnique({
+                    where: { firebaseUid },
+                    include: { settings: true },
+                });
+            } else {
+                throw upsertError;
+            }
+        }
 
         return NextResponse.json({ user });
     } catch (error) {
