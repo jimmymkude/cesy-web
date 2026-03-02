@@ -239,6 +239,13 @@ export default function VoiceCall({ onClose }) {
     const handleMicClick = () => {
         if (callState === 'listening') {
             stopListening();
+        } else if (callState === 'speaking') {
+            // Interrupt — stop audio and start listening
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+            startListening();
         } else if (callState === 'idle') {
             startListening();
         }
@@ -309,9 +316,9 @@ export default function VoiceCall({ onClose }) {
                 {/* Controls */}
                 <div className="voice-call-controls">
                     <button
-                        className={`voice-call-mic ${callState === 'listening' ? 'voice-call-mic-active' : ''} ${callState === 'thinking' || callState === 'speaking' ? 'voice-call-mic-disabled' : ''}`}
+                        className={`voice-call-mic ${callState === 'listening' ? 'voice-call-mic-active' : ''} ${callState === 'speaking' ? 'voice-call-mic-active' : ''} ${callState === 'thinking' ? 'voice-call-mic-disabled' : ''}`}
                         onClick={handleMicClick}
-                        disabled={callState === 'thinking' || callState === 'speaking' || !isSupported}
+                        disabled={callState === 'thinking' || !isSupported}
                     >
                         {callState === 'listening' ? (
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
