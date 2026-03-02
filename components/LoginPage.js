@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="login-page">
             <div className="login-card">
                 <div className="login-header">
-                    <div className="login-logo">C</div>
+                    <img src="/cesy-logo.png" alt="Cesy" className="login-logo" style={{ objectFit: 'cover' }} />
                     <h1 className="login-title">Welcome to Cesy</h1>
                     <p className="login-subtitle">Your AI-powered fitness assistant</p>
                 </div>

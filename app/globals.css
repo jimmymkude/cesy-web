@@ -18,10 +18,10 @@
   --color-text-muted: #6a6a80;
   --color-text-inverse: #0a0a0f;
 
-  --color-accent: #6c5ce7;
-  --color-accent-hover: #7d6ff0;
-  --color-accent-soft: rgba(108, 92, 231, 0.15);
-  --color-accent-glow: rgba(108, 92, 231, 0.4);
+  --color-accent: #2563eb;
+  --color-accent-hover: #3b82f6;
+  --color-accent-soft: rgba(37, 99, 235, 0.15);
+  --color-accent-glow: rgba(37, 99, 235, 0.4);
 
   --color-success: #00d2b4;
   --color-success-soft: rgba(0, 210, 180, 0.12);
@@ -34,7 +34,7 @@
   --color-divider: rgba(255, 255, 255, 0.05);
 
   /* Gradients — cleaner */
-  --gradient-accent: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-accent: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
   --gradient-card: linear-gradient(145deg, rgba(15, 15, 15, 0.9), rgba(10, 10, 10, 0.6));
   --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
 
@@ -341,6 +341,13 @@ a:hover {
   color: white;
   font-weight: var(--weight-bold);
   font-size: var(--text-sm);
+}
+
+.top-nav-logo-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .top-nav-title {
@@ -1094,7 +1101,7 @@ a:hover {
 }
 
 .voice-call-response {
-  background: rgba(108, 92, 231, 0.15);
+  background: rgba(37, 99, 235, 0.15);
 }
 
 .voice-call-label {

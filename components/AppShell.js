@@ -63,7 +63,7 @@ export default function AppShell({ children }) {
                 <div className="top-nav-inner">
                     <div className="top-nav-left">
                         <a href="/" className="top-nav-brand">
-                            <div className="top-nav-logo">C</div>
+                            <img src="/cesy-logo.png" alt="Cesy" className="top-nav-logo-img" />
                             <span className="top-nav-title">Cesy</span>
                         </a>
                         {/* Desktop nav links */}
