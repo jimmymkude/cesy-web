@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cesy Web
 
-## Getting Started
+AI-powered fitness assistant — web version of the [Cesy iOS app](https://github.com/jimmymkude/Cesy-iOS).
 
-First, run the development server:
+Built with **Next.js 14**, **Firebase Auth**, **Anthropic Claude**, **ElevenLabs TTS**, and **Railway PostgreSQL**.
+
+## Features
+
+- 💬 **AI Chat** — Conversational AI powered by Claude 3.5 Sonnet
+- 🎙️ **Voice** — Text-to-speech via ElevenLabs with custom voice selection
+- 🔐 **Auth** — Google, Apple, and email sign-in via Firebase
+- 🏋️ **Workouts** — Schedule management through natural conversation
+- 🌗 **Themes** — Dark/light mode with premium glassmorphism design
+- 📱 **Responsive** — Mobile-first design with collapsible sidebar
+
+## Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.example .env.local
+# Fill in your credentials in .env.local
+
+# Push database schema to Railway
+npx prisma db push
+
+# Start dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | Railway PostgreSQL connection string |
+| `NEXT_PUBLIC_FIREBASE_*` | Firebase web config (from Firebase Console) |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key for TTS |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tech Stack
 
-## Learn More
+- **Framework**: Next.js 14 (App Router)
+- **AI**: Anthropic Claude via API routes (server-side)
+- **Auth**: Firebase (Google, Apple, Email)
+- **Database**: Railway PostgreSQL + Prisma ORM
+- **TTS**: ElevenLabs API
+- **Styling**: Vanilla CSS with custom properties
+- **Deploy**: Vercel / Railway
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+├── page.js              # Chat page
+├── settings/page.js     # Settings (theme, voice)
+├── workout/page.js      # Workout schedule
+├── account/page.js      # User profile
+└── api/
+    ├── chat/route.js    # Anthropic Claude proxy
+    ├── auth/sync/       # Firebase → Postgres sync
+    └── elevenlabs/      # TTS + voice listing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+components/              # Sidebar, AppShell, LoginPage
+contexts/                # Auth, Chat, Theme providers
+lib/                     # Firebase, Prisma, constants
+prisma/                  # Database schema
+```
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Vercel
+Connect this repo to Vercel and set env vars in the dashboard.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Railway
+Add a PostgreSQL service and set `DATABASE_URL` in both Railway and Vercel.
+
+---
+
+Built by [Tanzasoft](https://tanzasoft.com)

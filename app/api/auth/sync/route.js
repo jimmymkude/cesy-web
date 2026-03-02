@@ -1,0 +1,43 @@
+import prisma from '@/lib/prisma';
+import { NextResponse } from 'next/server';
+
+/**
+ * POST /api/auth/sync
+ * Called after Firebase auth to ensure user profile exists in our PostgreSQL database.
+ */
+export async function POST(request) {
+    try {
+        const { firebaseUid, email, fullName, avatarUrl } = await request.json();
+
+        if (!firebaseUid) {
+            return NextResponse.json({ error: 'Missing firebaseUid' }, { status: 400 });
+        }
+
+        const user = await prisma.userProfile.upsert({
+            where: { firebaseUid },
+            update: {
+                email: email || undefined,
+                fullName: fullName || undefined,
+                avatarUrl: avatarUrl || undefined,
+            },
+            create: {
+                firebaseUid,
+                email,
+                fullName,
+                avatarUrl,
+                settings: {
+                    create: {
+                        assistantName: 'Cesy',
+                        darkMode: true,
+                    },
+                },
+            },
+            include: { settings: true },
+        });
+
+        return NextResponse.json({ user });
+    } catch (error) {
+        console.error('Auth sync error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
