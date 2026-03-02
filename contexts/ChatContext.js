@@ -31,6 +31,7 @@ export function ChatProvider({ children }) {
                 }),
             });
             const syncData = await syncRes.json();
+            console.log('[ChatContext] sync response:', syncData?.user?.id ? 'got userId' : 'NO userId', syncRes.status);
             if (syncData.user?.id) {
                 dbUserIdRef.current = syncData.user.id;
             }
