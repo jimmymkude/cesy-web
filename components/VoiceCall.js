@@ -14,16 +14,20 @@ export default function VoiceCall({ onClose }) {
     const [transcript, setTranscript] = useState('');
     const [cesyResponse, setCesyResponse] = useState('');
     const [error, setError] = useState(null);
+    const [isSupported, setIsSupported] = useState(false);
 
     const recognitionRef = useRef(null);
     const audioRef = useRef(null);
     const animFrameRef = useRef(null);
     const canvasRef = useRef(null);
+    const finalTranscriptRef = useRef('');
 
-    // Check for browser support
-    const isSupported = typeof window !== 'undefined' && (
-        'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
-    );
+    // Check browser support on mount
+    useEffect(() => {
+        setIsSupported(
+            'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
+        );
+    }, []);
 
     // Draw visualizer
     const drawVisualizer = useCallback((active) => {
@@ -38,7 +42,6 @@ export default function VoiceCall({ onClose }) {
 
             const bars = 32;
             const barW = W / bars - 2;
-            const cx = W / 2;
             const cy = H / 2;
 
             for (let i = 0; i < bars; i++) {
@@ -116,16 +119,38 @@ export default function VoiceCall({ onClose }) {
         }
     }, []);
 
+    // Process the transcript — send to Claude and speak response
+    const processTranscript = useCallback(async (text) => {
+        if (!text.trim()) {
+            setCallState('idle');
+            return;
+        }
+
+        setCallState('thinking');
+        try {
+            const data = await sendMessage(text.trim());
+            if (data?.message) {
+                speakResponse(data.message);
+            } else {
+                setCallState('idle');
+            }
+        } catch {
+            setCallState('idle');
+            setError('Failed to get response');
+        }
+    }, [sendMessage, speakResponse]);
+
     // Start listening
     const startListening = useCallback(() => {
         if (!isSupported) {
-            setError('Speech recognition not supported in this browser');
+            setError('Speech recognition not supported. Try Chrome or Safari.');
             return;
         }
 
         setError(null);
         setTranscript('');
         setCesyResponse('');
+        finalTranscriptRef.current = '';
         setCallState('listening');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -144,46 +169,46 @@ export default function VoiceCall({ onClose }) {
                     interim += event.results[i][0].transcript;
                 }
             }
-            setTranscript(final || interim);
+            const display = final || interim;
+            setTranscript(display);
+            // Store final transcript in ref for onend to use
+            if (final) {
+                finalTranscriptRef.current = final;
+            } else {
+                finalTranscriptRef.current = interim;
+            }
         };
 
-        recognition.onend = async () => {
+        recognition.onend = () => {
             recognitionRef.current = null;
-
-            // Get the final transcript
-            setTranscript((currentTranscript) => {
-                if (currentTranscript.trim()) {
-                    // Send to Claude and speak response
-                    setCallState('thinking');
-                    sendMessage(currentTranscript.trim()).then((data) => {
-                        if (data?.message) {
-                            speakResponse(data.message);
-                        } else {
-                            setCallState('idle');
-                        }
-                    }).catch(() => {
-                        setCallState('idle');
-                        setError('Failed to get response');
-                    });
-                } else {
-                    setCallState('idle');
-                }
-                return currentTranscript;
-            });
+            const text = finalTranscriptRef.current;
+            processTranscript(text);
         };
 
         recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-            if (event.error !== 'aborted') {
+            recognitionRef.current = null;
+
+            if (event.error === 'not-allowed') {
+                setError('Microphone access denied. Please allow microphone in browser settings.');
+            } else if (event.error === 'no-speech') {
+                setError('No speech detected. Tap the mic and try again.');
+            } else if (event.error !== 'aborted') {
                 setError(`Microphone error: ${event.error}`);
             }
             setCallState('idle');
-            recognitionRef.current = null;
         };
 
         recognitionRef.current = recognition;
-        recognition.start();
-    }, [isSupported, sendMessage, speakResponse]);
+
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error('Failed to start recognition:', e);
+            setError('Failed to start microphone. Is another app using it?');
+            setCallState('idle');
+        }
+    }, [isSupported, processTranscript]);
 
     // Stop listening
     const stopListening = useCallback(() => {
@@ -257,6 +282,18 @@ export default function VoiceCall({ onClose }) {
                     )}
                 </div>
 
+                {/* Not supported warning */}
+                {!isSupported && (
+                    <div style={{
+                        color: 'var(--color-warning)',
+                        fontSize: 'var(--text-sm)',
+                        textAlign: 'center',
+                        padding: 'var(--space-2)',
+                    }}>
+                        Voice recognition requires Chrome or Safari
+                    </div>
+                )}
+
                 {/* Error */}
                 {error && (
                     <div style={{
@@ -274,7 +311,7 @@ export default function VoiceCall({ onClose }) {
                     <button
                         className={`voice-call-mic ${callState === 'listening' ? 'voice-call-mic-active' : ''} ${callState === 'thinking' || callState === 'speaking' ? 'voice-call-mic-disabled' : ''}`}
                         onClick={handleMicClick}
-                        disabled={callState === 'thinking' || callState === 'speaking'}
+                        disabled={callState === 'thinking' || callState === 'speaking' || !isSupported}
                     >
                         {callState === 'listening' ? (
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
