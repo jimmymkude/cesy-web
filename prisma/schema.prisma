@@ -2,12 +2,14 @@
 // Deploy to Railway PostgreSQL
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model UserProfile {
@@ -30,6 +32,8 @@ model UserProfile {
   assistants  StoredAssistant[]
   memories    Memory[]
   workoutSchedule WorkoutSchedule?
+  reminders   Reminder[]
+  timers      Timer[]
 
   @@map("user_profiles")
 }
@@ -101,6 +105,7 @@ model Memory {
   userId    String   @map("user_id")
   content   String
   tags      Json     @default("[]")
+  embedding Unsupported("vector(512)")? // pgvector — Voyage AI embeddings
   createdAt DateTime @default(now()) @map("created_at")
 
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -118,4 +123,31 @@ model WorkoutSchedule {
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("workout_schedules")
+}
+
+model Reminder {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  content   String
+  dueAt     DateTime @map("due_at")
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reminders")
+}
+
+model Timer {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  label           String
+  durationSeconds Int      @map("duration_seconds")
+  startedAt       DateTime @default(now()) @map("started_at")
+  status          String   @default("running") // "running", "completed", "cancelled"
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("timers")
 }
