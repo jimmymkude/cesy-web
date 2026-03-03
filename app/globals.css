@@ -20,10 +20,10 @@
 
   --color-bg-glass: rgba(0, 0, 0, 0.6);
 
-  --color-accent: #2563eb;
-  --color-accent-hover: #3b82f6;
-  --color-accent-soft: rgba(37, 99, 235, 0.15);
-  --color-accent-glow: rgba(37, 99, 235, 0.3);
+  --color-accent: #eab308;
+  --color-accent-hover: #facc15;
+  --color-accent-soft: rgba(234, 179, 8, 0.15);
+  --color-accent-glow: rgba(234, 179, 8, 0.4);
 
   --color-success: #00d2b4;
   --color-success-soft: rgba(0, 210, 180, 0.12);
@@ -36,7 +36,7 @@
   --color-divider: rgba(255, 255, 255, 0.04);
 
   /* Gradients — ultra sleek */
-  --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-accent: linear-gradient(135deg, #facc15 0%, #eab308 100%);
   --gradient-card: linear-gradient(145deg, rgba(20, 20, 22, 0.8), rgba(10, 10, 12, 0.4));
   --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
 
@@ -144,10 +144,28 @@ html {
 body {
   font-family: var(--font-sans);
   background-color: var(--color-bg-primary);
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(234, 179, 8, 0.05), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(0, 210, 180, 0.04), transparent 40%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+  background-attachment: fixed;
   color: var(--color-text-primary);
   line-height: var(--leading-normal);
   min-height: 100vh;
   overflow-x: hidden;
+  animation: bgPulse 15s ease-in-out infinite alternate;
+}
+
+@keyframes bgPulse {
+  0% {
+    background-position: 0% 0%, 0% 0%, 0 0, 0 0;
+  }
+
+  100% {
+    background-position: 5% 5%, -5% -5%, 20px 20px, 20px 20px;
+  }
 }
 
 a {
@@ -1300,9 +1318,9 @@ a:hover {
 }
 
 .memories-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
 }
 
 .memory-card {

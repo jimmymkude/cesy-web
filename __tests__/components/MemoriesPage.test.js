@@ -11,6 +11,17 @@ jest.mock('@/contexts/AuthContext', () => ({
     }),
 }));
 
+// Mock Next.js router
+jest.mock('next/navigation', () => ({
+    usePathname: jest.fn(() => '/memories'),
+    useRouter: jest.fn(() => ({ push: jest.fn() })),
+}));
+
+// Mock ThemeContext
+jest.mock('@/contexts/ThemeContext', () => ({
+    useTheme: () => ({ theme: 'dark', toggleTheme: jest.fn() }),
+}));
+
 const originalFetch = global.fetch;
 
 import MemoriesPage from '@/app/memories/page';
