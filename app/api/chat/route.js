@@ -201,9 +201,13 @@ export async function POST(request) {
                 const toolResults = [];
                 for (const block of data.content) {
                     if (block.type === 'tool_use') {
-                        const result = userId
-                            ? await executeTool(block.name, block.input, userId)
-                            : 'No user ID available for memory operations.';
+                        let result;
+                        const needsUserId = ['save_memory', 'search_memories'].includes(block.name);
+                        if (needsUserId && !userId) {
+                            result = 'No user ID available for memory operations.';
+                        } else {
+                            result = await executeTool(block.name, block.input, userId);
+                        }
 
                         toolResults.push({
                             type: 'tool_result',
