@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
+import { LogOut } from 'lucide-react';
 
 export default function AccountPage() {
     const { user, loading, signOut } = useAuth();
@@ -84,11 +85,21 @@ export default function AccountPage() {
                 </div>
 
                 <button
-                    className="btn btn-danger"
+                    className="btn btn-outline"
                     onClick={signOut}
-                    style={{ width: '100%' }}
+                    style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 'var(--space-2)',
+                        color: 'var(--color-text-primary)',
+                        borderColor: 'var(--color-border)',
+                        background: 'var(--color-bg-secondary)'
+                    }}
                 >
-                    🚪 Sign Out
+                    <LogOut size={18} />
+                    Sign Out
                 </button>
             </div>
         </AppShell>
