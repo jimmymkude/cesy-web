@@ -3,49 +3,23 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePathname, useRouter } from 'next/navigation';
+import { MessageSquare, Dumbbell, Brain, Settings, User, LogOut, Sun, Moon } from 'lucide-react';
 
 const navItems = [
     {
-        id: 'chat', label: 'Chat', href: '/', icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-        )
+        id: 'chat', label: 'Chat', href: '/', icon: <MessageSquare size={20} strokeWidth={2} />
     },
     {
-        id: 'workout', label: 'Workouts', href: '/workout', icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6.5 6.5h11M6 12h12M17.5 17.5h-11" />
-                <circle cx="4" cy="6.5" r="2.5" /><circle cx="20" cy="6.5" r="2.5" />
-                <circle cx="4" cy="17.5" r="2.5" /><circle cx="20" cy="17.5" r="2.5" />
-                <rect x="2" y="10" width="4" height="4" rx="1" /><rect x="18" y="10" width="4" height="4" rx="1" />
-            </svg>
-        )
+        id: 'workout', label: 'Workouts', href: '/workout', icon: <Dumbbell size={20} strokeWidth={2} />
     },
     {
-        id: 'memories', label: 'Memory', href: '/memories', icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z" />
-                <line x1="10" y1="21" x2="14" y2="21" />
-                <line x1="10" y1="17" x2="14" y2="17" />
-            </svg>
-        )
+        id: 'memories', label: 'Memory', href: '/memories', icon: <Brain size={20} strokeWidth={2} />
     },
     {
-        id: 'settings', label: 'Settings', href: '/settings', icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-            </svg>
-        )
+        id: 'settings', label: 'Settings', href: '/settings', icon: <Settings size={20} strokeWidth={2} />
     },
     {
-        id: 'account', label: 'Account', href: '/account', icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-            </svg>
-        )
+        id: 'account', label: 'Account', href: '/account', icon: <User size={20} strokeWidth={2} />
     },
 ];
 
@@ -92,16 +66,14 @@ export default function AppShell({ children }) {
                     <div className="top-nav-right">
                         <button className="top-nav-btn" onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
                             {theme === 'dark' ? (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></svg>
+                                <Sun size={18} strokeWidth={2} />
                             ) : (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+                                <Moon size={18} strokeWidth={2} />
                             )}
                         </button>
                         <div className="top-nav-divider" />
                         <button className="top-nav-btn top-nav-btn-danger" onClick={signOut} title="Sign out">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-                            </svg>
+                            <LogOut size={18} strokeWidth={2} />
                         </button>
                     </div>
                 </div>

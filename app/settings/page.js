@@ -6,6 +6,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useCallback } from 'react';
 import { VOICE, STORAGE_KEYS } from '@/lib/constants';
+import { Volume2, Smartphone, CheckCircle2, AlertTriangle, Link as LinkIcon, RefreshCw, Copy, Check } from 'lucide-react';
 
 export default function SettingsPage() {
     const { user, loading } = useAuth();
@@ -18,6 +19,7 @@ export default function SettingsPage() {
     const [dbUserId, setDbUserId] = useState(null);
     const [telegramLinked, setTelegramLinked] = useState(null); // null = checking, true/false = known
     const [botConfigured, setBotConfigured] = useState(true);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     useEffect(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.selectedVoiceId);
@@ -182,7 +184,7 @@ export default function SettingsPage() {
                                     ))}
                                 </select>
                                 <button className="btn btn-ghost" onClick={testVoice}>
-                                    🔊 Test
+                                    <Volume2 size={16} /> Test
                                 </button>
                             </div>
                         </div>
@@ -194,7 +196,9 @@ export default function SettingsPage() {
                     <div className="card">
                         <div className="setting-row">
                             <div>
-                                <div className="setting-label">📱 Telegram Notifications</div>
+                                <div className="setting-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Smartphone size={18} /> Telegram Notifications
+                                </div>
                                 <div className="setting-description">
                                     Get reminders and alerts via Telegram even when Cesy is closed
                                 </div>
@@ -206,9 +210,9 @@ export default function SettingsPage() {
                                     fontSize: 'var(--text-sm)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px',
+                                    gap: '6px',
                                 }}>
-                                    ✅ Linked
+                                    <CheckCircle2 size={16} /> Linked
                                 </span>
                             )}
                         </div>
@@ -231,8 +235,12 @@ export default function SettingsPage() {
                                         padding: 'var(--space-3)',
                                         color: '#22c55e',
                                         fontWeight: 500,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        justifyContent: 'center',
                                     }}>
-                                        ✅ Your Telegram account is linked. Notifications will be delivered there.
+                                        <CheckCircle2 size={18} /> Your Telegram account is linked. Notifications will be delivered there.
                                     </div>
                                 </div>
                             )}
@@ -249,8 +257,11 @@ export default function SettingsPage() {
                                             color: '#eab308',
                                             fontSize: 'var(--text-sm)',
                                             marginBottom: 'var(--space-3)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
                                         }}>
-                                            ⚠️ Telegram bot is not configured yet. Add TELEGRAM_BOT_TOKEN to environment.
+                                            <AlertTriangle size={16} /> Telegram bot is not configured yet. Add TELEGRAM_BOT_TOKEN to environment.
                                         </div>
                                     )}
                                     <button
@@ -259,7 +270,7 @@ export default function SettingsPage() {
                                         disabled={linkLoading || !dbUserId || !botConfigured}
                                         style={{ width: '100%' }}
                                     >
-                                        {linkLoading ? 'Generating...' : '🔗 Link Telegram'}
+                                        {linkLoading ? 'Generating...' : <><LinkIcon size={16} /> Link Telegram</>}
                                     </button>
                                 </div>
                             )}
@@ -289,13 +300,12 @@ export default function SettingsPage() {
                                             className="btn btn-ghost"
                                             onClick={() => {
                                                 navigator.clipboard.writeText(`/start ${linkCode}`);
-                                                const btn = document.getElementById('copy-btn');
-                                                if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 1500); }
+                                                setLinkCopied(true);
+                                                setTimeout(() => setLinkCopied(false), 2000);
                                             }}
-                                            id="copy-btn"
-                                            style={{ marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)', padding: '2px 8px' }}
+                                            style={{ marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)', padding: '4px 8px' }}
                                         >
-                                            📋 Copy
+                                            {linkCopied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy</>}
                                         </button>
                                     </div>
                                     <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center', marginTop: 'var(--space-3)' }}>
@@ -303,7 +313,7 @@ export default function SettingsPage() {
                                             className="btn btn-primary"
                                             onClick={() => checkTelegramStatus(dbUserId)}
                                         >
-                                            🔄 Check Status
+                                            <RefreshCw size={16} /> Check Status
                                         </button>
                                         <button
                                             className="btn btn-ghost"

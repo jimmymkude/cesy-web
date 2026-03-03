@@ -6,6 +6,7 @@ import { useChat } from '@/contexts/ChatContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import VoiceCall from '@/components/VoiceCall';
+import { MessageSquare, Mic, Trash2, Send } from 'lucide-react';
 
 function ChatArea() {
   const { user } = useAuth();
@@ -41,7 +42,9 @@ function ChatArea() {
         <div className="chat-messages">
           {messages.length === 0 && !isLoading && (
             <div className="empty-state">
-              <div className="empty-state-icon">💬</div>
+              <div className="empty-state-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
+                <MessageSquare size={48} strokeWidth={1.5} />
+              </div>
               <h2 className="empty-state-title">Hey there!</h2>
               <p className="empty-state-description">
                 I&apos;m Cesy, your AI fitness assistant. Ask me about workouts, schedules, or anything fitness-related. I&apos;ll keep it short and witty.
@@ -110,18 +113,16 @@ function ChatArea() {
               className="btn btn-ghost btn-icon"
               onClick={() => setShowVoiceCall(true)}
               title="Voice call"
-              style={{ fontSize: 'var(--text-lg)' }}
             >
-              🎙️
+              <Mic size={20} strokeWidth={2} />
             </button>
             <button
               type="button"
               className="btn btn-ghost btn-icon"
               onClick={clearChat}
               title="New conversation"
-              style={{ fontSize: 'var(--text-lg)' }}
             >
-              🗑️
+              <Trash2 size={20} strokeWidth={2} />
             </button>
             <button
               type="submit"
@@ -132,10 +133,7 @@ function ChatArea() {
               {isLoading ? (
                 <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
               ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
+                <Send size={18} strokeWidth={2} />
               )}
             </button>
           </form>

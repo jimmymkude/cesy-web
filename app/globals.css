@@ -348,12 +348,11 @@ a:hover {
 }
 
 .top-nav-title {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: var(--weight-bold);
-  background: var(--gradient-accent);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
 }
 
 .desktop-nav {

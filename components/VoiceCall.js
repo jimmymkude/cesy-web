@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { VOICE, STORAGE_KEYS, ASSISTANT } from '@/lib/constants';
+import { Mic, Square, PhoneOff } from 'lucide-react';
 
 /**
  * VoiceCall — A call-like voice interface for Cesy.
@@ -389,25 +390,16 @@ You have access to tools for managing workouts (manage_workout), setting reminde
                         disabled={callState === 'thinking' || !isSupported}
                     >
                         {callState === 'listening' ? (
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                                <rect x="4" y="4" width="16" height="16" rx="2" />
-                            </svg>
+                            <Square fill="currentColor" stroke="none" size={22} />
                         ) : callState === 'thinking' ? (
                             <div className="spinner" style={{ width: 24, height: 24, borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} />
                         ) : (
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                <line x1="12" y1="19" x2="12" y2="23" />
-                                <line x1="8" y1="23" x2="16" y2="23" />
-                            </svg>
+                            <Mic size={28} strokeWidth={2} />
                         )}
                     </button>
 
                     <button className="voice-call-end" onClick={endCall}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08a.956.956 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71s-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.73-1.68-1.36-2.66-1.85a.991.991 0 0 1-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z" />
-                        </svg>
+                        <PhoneOff size={24} />
                     </button>
                 </div>
             </div>

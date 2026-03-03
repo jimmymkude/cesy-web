@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Brain, Trash2, X } from 'lucide-react';
 
 export default function MemoriesPage() {
     const { user } = useAuth();
@@ -87,7 +88,9 @@ export default function MemoriesPage() {
             {error && (
                 <div className="memories-error">
                     {error}
-                    <button onClick={() => setError(null)} className="memories-error-dismiss">✕</button>
+                    <button onClick={() => setError(null)} className="memories-error-dismiss">
+                        <X size={16} strokeWidth={2} />
+                    </button>
                 </div>
             )}
 
@@ -98,10 +101,9 @@ export default function MemoriesPage() {
                 </div>
             ) : memories.length === 0 ? (
                 <div className="memories-empty">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
-                        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
-                        <path d="M12 8v4M12 16h.01" />
-                    </svg>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
+                        <Brain size={48} strokeWidth={1.5} style={{ opacity: 0.4 }} />
+                    </div>
                     <p className="memories-empty-title">No memories yet</p>
                     <p className="memories-empty-desc">
                         Chat with Cesy and she&apos;ll remember important things about you — your preferences, goals, and more.
@@ -136,10 +138,7 @@ export default function MemoriesPage() {
                                 {deletingId === memory.id ? (
                                     <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
                                 ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="3 6 5 6 21 6" />
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                    </svg>
+                                    <Trash2 size={16} strokeWidth={2} />
                                 )}
                             </button>
                         </div>

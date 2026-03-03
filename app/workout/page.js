@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useCallback } from 'react';
+import { Dumbbell, MessageSquare } from 'lucide-react';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -96,7 +97,7 @@ export default function WorkoutPage() {
                                         fontSize: 'var(--text-lg)',
                                         flexShrink: 0,
                                     }}>
-                                        🏋️
+                                        <Dumbbell size={24} color="var(--color-text-primary)" />
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{
@@ -143,13 +144,15 @@ export default function WorkoutPage() {
                     </div>
                 ) : (
                     <div className="empty-state">
-                        <div className="empty-state-icon">🏋️</div>
+                        <div className="empty-state-icon" style={{ display: 'flex', justifyContent: 'center' }}>
+                            <Dumbbell size={48} strokeWidth={1.5} />
+                        </div>
                         <h2 className="empty-state-title">No Schedule Yet</h2>
                         <p className="empty-state-description">
                             Ask Cesy to create a workout schedule for you in the chat. Try: &ldquo;Create a weekly workout plan for me&rdquo;
                         </p>
-                        <a href="/" className="btn btn-primary" style={{ marginTop: 'var(--space-6)' }}>
-                            💬 Go to Chat
+                        <a href="/" className="btn btn-primary" style={{ marginTop: 'var(--space-6)', display: 'inline-flex', gap: '8px' }}>
+                            <MessageSquare size={18} /> Go to Chat
                         </a>
                     </div>
                 )}
