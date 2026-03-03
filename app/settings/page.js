@@ -285,6 +285,18 @@ export default function SettingsPage() {
                                     <div className="setting-description" style={{ marginTop: 'var(--space-3)' }}>
                                         Open <strong>@CesyAIBot</strong> on Telegram and send:<br />
                                         <code style={{ color: 'var(--color-primary)' }}>/start {linkCode}</code>
+                                        <button
+                                            className="btn btn-ghost"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(`/start ${linkCode}`);
+                                                const btn = document.getElementById('copy-btn');
+                                                if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 1500); }
+                                            }}
+                                            id="copy-btn"
+                                            style={{ marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)', padding: '2px 8px' }}
+                                        >
+                                            📋 Copy
+                                        </button>
                                     </div>
                                     <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center', marginTop: 'var(--space-3)' }}>
                                         <button
