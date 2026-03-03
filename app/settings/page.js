@@ -13,11 +13,36 @@ export default function SettingsPage() {
     const [voiceId, setVoiceId] = useState(VOICE.defaultVoiceId);
     const [voices, setVoices] = useState([]);
     const [ttsEnabled, setTtsEnabled] = useState(true);
+    const [linkCode, setLinkCode] = useState(null);
+    const [linkLoading, setLinkLoading] = useState(false);
+    const [dbUserId, setDbUserId] = useState(null);
 
     useEffect(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.selectedVoiceId);
         if (saved) setVoiceId(saved);
     }, []);
+
+    // Sync user to get DB ID for Telegram linking
+    useEffect(() => {
+        if (!user) return;
+        async function syncUser() {
+            try {
+                const res = await fetch('/api/auth/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        firebaseUid: user.uid,
+                        email: user.email,
+                        fullName: user.displayName,
+                        avatarUrl: user.photoURL,
+                    }),
+                });
+                const data = await res.json();
+                if (data.user?.id) setDbUserId(data.user.id);
+            } catch { /* ignore */ }
+        }
+        syncUser();
+    }, [user]);
 
     useEffect(() => {
         async function loadVoices() {
@@ -56,6 +81,24 @@ export default function SettingsPage() {
             }
         } catch (e) {
             console.error('Voice test error:', e);
+        }
+    };
+
+    const generateLinkCode = async () => {
+        if (!dbUserId) return;
+        setLinkLoading(true);
+        try {
+            const res = await fetch('/api/telegram/link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: dbUserId }),
+            });
+            const data = await res.json();
+            if (data.code) setLinkCode(data.code);
+        } catch (e) {
+            console.error('Failed to generate link code:', e);
+        } finally {
+            setLinkLoading(false);
         }
     };
 
@@ -127,6 +170,62 @@ export default function SettingsPage() {
                                     🔊 Test
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="settings-section">
+                    <h2 className="settings-section-title">Notifications</h2>
+                    <div className="card">
+                        <div className="setting-row">
+                            <div>
+                                <div className="setting-label">📱 Telegram Notifications</div>
+                                <div className="setting-description">
+                                    Get reminders and alerts via Telegram even when Cesy is closed
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ borderTop: '1px solid var(--color-divider)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)' }}>
+                            {!linkCode ? (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={generateLinkCode}
+                                    disabled={linkLoading || !dbUserId}
+                                    style={{ width: '100%' }}
+                                >
+                                    {linkLoading ? 'Generating...' : '🔗 Link Telegram'}
+                                </button>
+                            ) : (
+                                <div style={{ textAlign: 'center' }}>
+                                    <div className="setting-label" style={{ marginBottom: 'var(--space-2)' }}>
+                                        Your link code (expires in 10 min):
+                                    </div>
+                                    <div style={{
+                                        fontSize: 'var(--text-xl)',
+                                        fontFamily: 'monospace',
+                                        fontWeight: 'bold',
+                                        color: 'var(--color-primary)',
+                                        padding: 'var(--space-3)',
+                                        background: 'var(--color-surface-elevated)',
+                                        borderRadius: 'var(--radius-lg)',
+                                        letterSpacing: '0.1em',
+                                    }}>
+                                        {linkCode}
+                                    </div>
+                                    <div className="setting-description" style={{ marginTop: 'var(--space-3)' }}>
+                                        Open <strong>@CesyAIBot</strong> on Telegram and send:<br />
+                                        <code style={{ color: 'var(--color-primary)' }}>/start {linkCode}</code>
+                                    </div>
+                                    <button
+                                        className="btn btn-ghost"
+                                        onClick={() => setLinkCode(null)}
+                                        style={{ marginTop: 'var(--space-2)' }}
+                                    >
+                                        Generate New Code
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

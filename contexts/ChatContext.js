@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ASSISTANT } from '@/lib/constants';
+import { requestNotificationPermission, registerTimer, startReminderPolling } from '@/lib/notifications';
 
 const ChatContext = createContext(null);
 
@@ -13,6 +14,8 @@ export function ChatProvider({ children }) {
     const [error, setError] = useState(null);
     const workoutRef = useRef(null);
     const dbUserIdRef = useRef(null);
+    const pollingCleanupRef = useRef(null);
+    const notifPermissionRef = useRef(false);
 
     // Fetch the DB user ID and memories
     const ensureUserData = useCallback(async () => {
@@ -43,10 +46,24 @@ export function ChatProvider({ children }) {
                     workoutRef.current = workoutData.schedule;
                 }
             }
+
+            // Start reminder polling once we have the userId
+            if (dbUserIdRef.current && !pollingCleanupRef.current) {
+                pollingCleanupRef.current = startReminderPolling(dbUserIdRef.current);
+            }
         } catch (e) {
             console.error('Failed to load user data:', e);
         }
     }, [user]);
+
+    // Cleanup polling on unmount
+    useEffect(() => {
+        return () => {
+            if (pollingCleanupRef.current) {
+                pollingCleanupRef.current();
+            }
+        };
+    }, []);
 
     // Build system prompt — memories are now handled by LLM tools
     const buildSystemPrompt = useCallback(() => {
@@ -55,7 +72,7 @@ export function ChatProvider({ children }) {
         const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\nCurrent date and time: ${dateStr}, ${timeStr}.\nWhen the user says "today", "tomorrow", "this Friday", etc., resolve these to actual calendar dates using the current date above.`;
 
-        // Schedule formatting instructions
+        // Tool instructions
         prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), checking their calendar (get_calendar), and more. Use the appropriate tool for each request.`;
 
         // Inject saved workout schedule
@@ -73,12 +90,17 @@ export function ChatProvider({ children }) {
         return prompt;
     }, [user]);
 
-
     const sendMessage = useCallback(async (text) => {
         if (!text.trim() || isLoading || !user) return;
 
         setError(null);
         await ensureUserData();
+
+        // Request notification permission on first message
+        if (!notifPermissionRef.current) {
+            notifPermissionRef.current = true;
+            requestNotificationPermission();
+        }
 
         // Add user message to UI immediately
         const userMsg = { id: Date.now().toString(), role: 'user', content: text, createdAt: Date.now() };
@@ -108,6 +130,13 @@ export function ChatProvider({ children }) {
                 throw new Error(data.error || 'Failed to get response');
             }
 
+            // Start client-side timers if any were set
+            if (data.timers?.length > 0) {
+                for (const timer of data.timers) {
+                    registerTimer(timer.id, timer.durationSeconds, timer.label);
+                }
+            }
+
             const assistantMsg = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
@@ -116,7 +145,6 @@ export function ChatProvider({ children }) {
                 usage: data.usage,
             };
             setMessages((prev) => [...prev, assistantMsg]);
-
 
             return data;
         } catch (e) {

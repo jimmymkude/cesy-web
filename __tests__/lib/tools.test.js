@@ -4,6 +4,13 @@
  */
 import { TOOLS, executeTool, safeEvaluate, generateEmbedding, toVectorLiteral } from '@/lib/tools';
 
+// Mock sendNotificationToUser from telegram module
+jest.mock('@/lib/telegram', () => ({
+    sendNotificationToUser: jest.fn().mockResolvedValue({ sent: false, reason: 'No Telegram account linked.' }),
+}));
+
+import { sendNotificationToUser } from '@/lib/telegram';
+
 jest.mock('@/lib/prisma', () => ({
     __esModule: true,
     default: {
@@ -596,23 +603,26 @@ describe('executeTool', () => {
 
     // ── send_notification ────────────────────────────────────
     describe('send_notification', () => {
-        it('returns confirmation with default channel', async () => {
+        it('sends via Telegram when linked', async () => {
+            sendNotificationToUser.mockResolvedValueOnce({ sent: true, result: { ok: true } });
             const spy = jest.spyOn(console, 'log').mockImplementation();
 
             const result = await executeTool('send_notification', { message: 'Hello!' }, 'u1');
 
-            expect(result).toContain('Notification queued');
-            expect(result).toContain('push');
+            expect(result).toContain('sent via Telegram');
             expect(result).toContain('Hello!');
+            expect(sendNotificationToUser).toHaveBeenCalledWith('u1', 'Hello!');
             spy.mockRestore();
         });
 
-        it('respects custom channel', async () => {
+        it('falls back when Telegram not linked', async () => {
+            sendNotificationToUser.mockResolvedValueOnce({ sent: false, reason: 'No Telegram account linked.' });
             const spy = jest.spyOn(console, 'log').mockImplementation();
 
-            const result = await executeTool('send_notification', { message: 'Hi', channel: 'whatsapp' }, 'u1');
+            const result = await executeTool('send_notification', { message: 'Hi', channel: 'push' }, 'u1');
 
-            expect(result).toContain('whatsapp');
+            expect(result).toContain('Link Telegram');
+            expect(result).toContain('Hi');
             spy.mockRestore();
         });
     });
@@ -800,7 +810,7 @@ describe('executeTool', () => {
 
     // ── set_timer ────────────────────────────────────────────
     describe('set_timer', () => {
-        it('creates a timer with minutes and seconds', async () => {
+        it('creates a timer and returns JSON with metadata', async () => {
             prisma.timer.create.mockResolvedValue({ id: 't1' });
 
             const result = await executeTool('set_timer', {
@@ -808,9 +818,11 @@ describe('executeTool', () => {
                 durationSeconds: 600,
             }, 'u1');
 
-            expect(result).toContain('Timer started');
-            expect(result).toContain('Pasta cooking');
-            expect(result).toContain('10m 0s');
+            const parsed = JSON.parse(result);
+            expect(parsed.message).toContain('Timer started');
+            expect(parsed.message).toContain('Pasta cooking');
+            expect(parsed.message).toContain('10m 0s');
+            expect(parsed.__timer).toEqual({ id: 't1', durationSeconds: 600, label: 'Pasta cooking' });
             expect(prisma.timer.create).toHaveBeenCalledWith({
                 data: { userId: 'u1', label: 'Pasta cooking', durationSeconds: 600 },
             });
@@ -824,8 +836,9 @@ describe('executeTool', () => {
                 durationSeconds: 30,
             }, 'u1');
 
-            expect(result).toContain('30s');
-            expect(result).not.toContain('0m');
+            const parsed = JSON.parse(result);
+            expect(parsed.message).toContain('30s');
+            expect(parsed.message).not.toContain('0m');
         });
 
         it('returns error for zero duration', async () => {

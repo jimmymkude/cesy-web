@@ -34,6 +34,7 @@ export async function POST(request) {
         let finalResponse = null;
         let iterations = 0;
         const MAX_ITERATIONS = 5; // Safety limit
+        const timersMeta = []; // Collect timer metadata for frontend
 
         while (iterations < MAX_ITERATIONS) {
             iterations++;
@@ -81,6 +82,17 @@ export async function POST(request) {
                             result = await executeTool(block.name, block.input, userId);
                         }
 
+                        // Extract timer metadata if present
+                        if (block.name === 'set_timer' && typeof result === 'string') {
+                            try {
+                                const parsed = JSON.parse(result);
+                                if (parsed.__timer) {
+                                    timersMeta.push(parsed.__timer);
+                                    result = parsed.message; // Use the clean message for Claude
+                                }
+                            } catch { /* not JSON, use as-is */ }
+                        }
+
                         toolResults.push({
                             type: 'tool_result',
                             tool_use_id: block.id,
@@ -108,11 +120,18 @@ export async function POST(request) {
                 .map((b) => b.text)
                 .join('') || 'No response received.';
 
-        return NextResponse.json({
+        const response = {
             message: responseText,
             model: finalResponse.model,
             usage: finalResponse.usage,
-        });
+        };
+
+        // Include timer metadata if any timers were set
+        if (timersMeta.length > 0) {
+            response.timers = timersMeta;
+        }
+
+        return NextResponse.json(response);
     } catch (error) {
         console.error('Chat error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
