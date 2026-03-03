@@ -47,7 +47,7 @@ export async function POST(request) {
                 },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-20250514',
-                    max_tokens: 1024,
+                    max_tokens: 2048,
                     system: systemPrompt || '',
                     messages: currentMessages,
                     tools: TOOLS,

@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { VOICE, STORAGE_KEYS, ASSISTANT } from '@/lib/constants';
-import { parseScheduleFromResponse } from '@/lib/scheduleParser';
 
 /**
  * VoiceCall — A call-like voice interface for Cesy.
@@ -176,11 +175,7 @@ Current date and time: ${dateStr}, ${timeStr}.
 
 IMPORTANT: You are in a VOICE CALL. Keep responses SHORT and conversational — 1-3 sentences max. No markdown, no bullet points, no formatting. Speak naturally as if on a phone call.${user?.displayName ? `\n\nThe user's name is ${user.displayName}.` : ''}
 
-You have access to memory tools. Use save_memory to remember important facts about the user. Use search_memories to recall previously saved information.
-
-IMPORTANT: When creating or showing a workout schedule, ALWAYS format each day exactly like this:
-- Day: Workout Type, Duration minutes (Equipment: item1, item2)
-This exact format is required so the app can parse and save the schedule automatically.`;
+You have access to tools for managing workouts (manage_workout), setting reminders (set_reminder), and more. Use the appropriate tool for each request.`;
 
         // Inject saved workout schedule
         if (workoutRef.current?.schedule?.length > 0) {
@@ -214,21 +209,6 @@ This exact format is required so the app can parse and save the schedule automat
                 // Add assistant response to voice history
                 voiceHistoryRef.current.push({ role: 'assistant', content: data.message });
 
-                // Check for workout schedule in response and save it
-                if (dbUserIdRef.current) {
-                    const schedule = parseScheduleFromResponse(data.message);
-                    if (schedule) {
-                        fetch('/api/workout', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                userId: dbUserIdRef.current,
-                                schedule,
-                                rawResponse: data.message,
-                            }),
-                        }).catch(() => { });
-                    }
-                }
 
                 speakResponse(data.message);
             } else {

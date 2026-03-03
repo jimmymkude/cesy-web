@@ -70,11 +70,36 @@ prisma/                  # Database schema
 
 ## Deployment
 
-### Vercel
-Connect this repo to Vercel and set env vars in the dashboard.
-
 ### Railway
-Add a PostgreSQL service and set `DATABASE_URL` in both Railway and Vercel.
+Add a PostgreSQL service and set `DATABASE_URL` in Railway.
+
+## Suppported Use Cases
+
+🧠 Memory Tools
+Save: "Remember that my favorite programming language is Python"
+Search: "What do you remember about me?"
+Update: "Actually, I prefer TypeScript over Python now"
+Delete: "Forget that I like TypeScript"
+⏰ Reminders & Calendar
+Set reminder: "Remind me to buy groceries tomorrow at 5pm"
+Calendar: "What's on my schedule for today?"
+🌤️ Weather
+"What's the weather like in Dar es Salaam?"
+🔢 Calculator
+"What's my BMI if I'm 75kg and 1.78m tall?"
+"Calculate 15% tip on a bill of 48,000 TZS"
+🏋️ Workout Management
+"Add yoga on Sundays for 60 minutes"
+"Remove my Monday workout"
+"What's my workout schedule look like?" (triggers get_calendar)
+⏱️ Timer
+"Set a 10 minute timer for my break"
+📢 Notification
+"Send me a notification to drink water"
+🔍 Web Search
+"What happened in the Premier League today?"
+🔥 Combo Test (multiple tools in one turn)
+"Remember that I have a dentist appointment on Friday, set a reminder for it at 9am, and what's the weather going to be like in Dar?"
 
 ---
 

@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ASSISTANT } from '@/lib/constants';
-import { parseScheduleFromResponse } from '@/lib/scheduleParser';
 
 const ChatContext = createContext(null);
 
@@ -57,10 +56,7 @@ export function ChatProvider({ children }) {
         let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\nCurrent date and time: ${dateStr}, ${timeStr}.`;
 
         // Schedule formatting instructions
-        prompt += `\n\nIMPORTANT: When creating or showing a workout schedule, ALWAYS format each day exactly like this:\n- Day: Workout Type, Duration minutes (Equipment: item1, item2)\nFor example:\n- Monday: Basketball drills, 30 minutes (Equipment: Basketball, Court)\n- Tuesday: Strength training, 45 minutes (Equipment: Dumbbells, Bench)\nThis exact format is required so the app can parse and save the schedule automatically.`;
-
-        // Memory tool instructions
-        prompt += `\n\nYou have access to memory tools. Use save_memory to remember important facts about the user (preferences, goals, habits, personal info). Use search_memories to recall previously saved information when it would help personalize your response. Be proactive about saving new facts and searching for context.`;
+        prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), checking their calendar (get_calendar), and more. Use the appropriate tool for each request.`;
 
         // Inject saved workout schedule
         if (workoutRef.current?.schedule?.length > 0) {
@@ -77,27 +73,6 @@ export function ChatProvider({ children }) {
         return prompt;
     }, [user]);
 
-    // Check if response contains a workout schedule and save it
-    const checkForSchedule = useCallback(async (response) => {
-        if (!dbUserIdRef.current) return;
-
-        const schedule = parseScheduleFromResponse(response);
-        if (schedule) {
-            try {
-                await fetch('/api/workout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: dbUserIdRef.current,
-                        schedule,
-                        rawResponse: response,
-                    }),
-                });
-            } catch (e) {
-                console.error('Failed to save workout schedule:', e);
-            }
-        }
-    }, []);
 
     const sendMessage = useCallback(async (text) => {
         if (!text.trim() || isLoading || !user) return;
@@ -142,8 +117,6 @@ export function ChatProvider({ children }) {
             };
             setMessages((prev) => [...prev, assistantMsg]);
 
-            // Check for workout schedule in response
-            checkForSchedule(data.message);
 
             return data;
         } catch (e) {
@@ -152,7 +125,7 @@ export function ChatProvider({ children }) {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, isLoading, user, ensureUserData, buildSystemPrompt, checkForSchedule]);
+    }, [messages, isLoading, user, ensureUserData, buildSystemPrompt]);
 
     const clearChat = useCallback(() => {
         setMessages([]);
