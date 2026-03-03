@@ -482,13 +482,38 @@ describe('executeTool', () => {
             expect(result).toContain('Nothing scheduled');
         });
 
-        it('defaults to today when no date given', async () => {
+        it('returns all upcoming reminders and full schedule when no date given', async () => {
+            prisma.reminder.findMany.mockResolvedValue([
+                { content: 'Dentist appointment', dueAt: new Date(2024, 2, 20, 9, 0, 0) },
+                { content: 'Submit report', dueAt: new Date(2024, 2, 22, 17, 0, 0) },
+            ]);
+            prisma.workoutSchedule.findUnique.mockResolvedValue({
+                schedule: [
+                    { dayOfWeek: 1, dayName: 'Monday', workoutType: 'Running', duration: 30, equipment: [] },
+                    { dayOfWeek: 3, dayName: 'Wednesday', workoutType: 'Yoga', duration: 60, equipment: ['Mat'] },
+                ],
+            });
+
+            const result = await executeTool('get_calendar', {}, 'u1');
+
+            expect(result).toContain('Upcoming Schedule');
+            expect(result).toContain('Dentist appointment');
+            expect(result).toContain('Submit report');
+            expect(result).toContain('Weekly Workouts');
+            expect(result).toContain('Monday');
+            expect(result).toContain('Running');
+            expect(result).toContain('Wednesday');
+            expect(result).toContain('Yoga');
+        });
+
+        it('shows no upcoming reminders message when none exist', async () => {
             prisma.reminder.findMany.mockResolvedValue([]);
             prisma.workoutSchedule.findUnique.mockResolvedValue(null);
 
             const result = await executeTool('get_calendar', {}, 'u1');
 
-            expect(result).toContain('Nothing scheduled');
+            expect(result).toContain('Upcoming Schedule');
+            expect(result).toContain('No upcoming reminders');
         });
 
         it('handles workout with no equipment', async () => {
