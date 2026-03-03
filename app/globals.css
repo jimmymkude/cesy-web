@@ -340,19 +340,33 @@ a:hover {
   flex-shrink: 0;
 }
 
-.top-nav-logo-img {
+.top-nav-logo-icon {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  object-fit: cover;
+  background: var(--color-accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: glow-pulse 3s infinite alternate;
+  box-shadow: 0 0 15px var(--color-accent-glow);
+  flex-shrink: 0;
 }
 
 .top-nav-title {
   font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-weight: 800;
   font-family: var(--font-sans);
-  color: var(--color-text-primary);
-  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, var(--color-text-primary), var(--color-accent), var(--color-text-primary));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  animation: shine 4s linear infinite;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 0 15px var(--color-accent-glow);
 }
 
 .desktop-nav {
@@ -732,12 +746,17 @@ a:hover {
   margin-bottom: var(--space-8);
 }
 
-.login-logo {
+.login-logo-icon {
   width: 64px;
   height: 64px;
-  object-fit: contain;
-  margin-bottom: var(--space-4);
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-5);
+  animation: glow-pulse 3s infinite alternate;
+  box-shadow: 0 0 25px var(--color-accent-glow);
 }
 
 .login-title {
@@ -986,6 +1005,24 @@ a:hover {
 
   to {
     opacity: 1;
+  }
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+@keyframes glow-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px var(--color-accent-glow);
+  }
+
+  100% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px var(--color-accent), 0 0 40px var(--color-accent-glow);
   }
 }
 
@@ -1269,60 +1306,94 @@ a:hover {
 }
 
 .memory-card {
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
   border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-5);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--space-3);
-  transition: all var(--transition-fast);
+  gap: var(--space-4);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.memory-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--color-accent-soft) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .memory-card:hover {
-  border-color: var(--color-border-hover, rgba(255, 255, 255, 0.15));
-  transform: translateY(-1px);
+  border-color: var(--color-accent);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 10px 30px var(--color-accent-glow);
+}
+
+.memory-card:hover::before {
+  opacity: 1;
 }
 
 .memory-content {
   flex: 1;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .memory-text {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   color: var(--color-text-primary);
-  margin: 0 0 var(--space-2) 0;
-  line-height: 1.5;
+  margin: 0 0 var(--space-3) 0;
+  line-height: var(--leading-relaxed);
+  font-family: var(--font-sans);
 }
 
 .memory-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .memory-date {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .memory-tags {
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .memory-tag {
   font-size: 0.65rem;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  background: rgba(37, 99, 235, 0.15);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--color-accent-glow);
   color: var(--color-accent);
-  font-weight: 500;
-  text-transform: lowercase;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  box-shadow: inset 0 0 10px var(--color-accent-soft);
 }
 
 .memory-delete {
@@ -1337,11 +1408,14 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 .memory-delete:hover {
   background: rgba(255, 59, 48, 0.1);
   color: var(--color-error);
+  box-shadow: 0 0 10px rgba(255, 59, 48, 0.2);
 }
 
 .memory-delete:disabled {

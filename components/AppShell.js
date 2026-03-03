@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { MessageSquare, Dumbbell, Brain, Settings, User, LogOut, Sun, Moon } from 'lucide-react';
+import { MessageSquare, Dumbbell, Brain, Settings, User, LogOut, Sun, Moon, Activity } from 'lucide-react';
 
 const navItems = [
     {
@@ -46,7 +46,9 @@ export default function AppShell({ children }) {
                 <div className="top-nav-inner">
                     <div className="top-nav-left">
                         <a href="/" className="top-nav-brand">
-                            <img src="/cesy-logo.png" alt="Cesy" className="top-nav-logo-img" />
+                            <div className="top-nav-logo-icon">
+                                <Activity size={24} color="var(--color-bg-primary)" strokeWidth={2.5} />
+                            </div>
                             <span className="top-nav-title">Cesy</span>
                         </a>
                         {/* Desktop nav links */}

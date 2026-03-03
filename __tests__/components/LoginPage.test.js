@@ -196,10 +196,9 @@ describe('LoginPage', () => {
         expect(submitBtn.textContent).toContain('Create Account');
     });
 
-    it('renders logo image', () => {
+    it('renders logo', () => {
         const { container } = render(<LoginPage />);
-        const logo = container.querySelector('img');
+        const logo = container.querySelector('.login-logo-icon');
         expect(logo).toBeTruthy();
-        expect(logo.getAttribute('src')).toContain('cesy-logo');
     });
 });

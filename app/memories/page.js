@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Brain, Trash2, X } from 'lucide-react';
+import { Brain, Trash2, X, Terminal } from 'lucide-react';
 
 export default function MemoriesPage() {
     const { user } = useAuth();
@@ -117,7 +117,10 @@ export default function MemoriesPage() {
                     {memories.map((memory) => (
                         <div key={memory.id} className="memory-card">
                             <div className="memory-content">
-                                <p className="memory-text">{memory.content}</p>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
+                                    <Terminal size={18} color="var(--color-accent)" style={{ marginTop: '4px', flexShrink: 0, opacity: 0.8 }} />
+                                    <p className="memory-text" style={{ margin: 0 }}>{memory.content}</p>
+                                </div>
                                 <div className="memory-meta">
                                     <span className="memory-date">{formatDate(memory.createdAt)}</span>
                                     {memory.tags && memory.tags.length > 0 && (
