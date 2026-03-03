@@ -40,6 +40,21 @@ const TOOLS = [
             required: ['query'],
         },
     },
+    {
+        name: 'web_search',
+        description:
+            'Search the web for real-time information. Use this when the user asks about current events, news, weather, sports scores, recent developments, or anything that requires up-to-date information you may not have. Also useful for fact-checking or finding specific details.',
+        input_schema: {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: 'Web search query — be specific and include context for better results.',
+                },
+            },
+            required: ['query'],
+        },
+    },
 ];
 
 // Execute a tool call
@@ -77,6 +92,45 @@ async function executeTool(toolName, toolInput, userId) {
             return memories
                 .map((m) => `- ${m.content} (${new Date(m.createdAt).toLocaleDateString()})`)
                 .join('\n');
+        }
+
+        case 'web_search': {
+            const { query } = toolInput;
+            const apiKey = process.env.PERPLEXITY_API_KEY;
+            if (!apiKey) return 'Web search is not configured.';
+
+            try {
+                const res = await fetch('https://api.perplexity.ai/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'sonar',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'You are a research assistant. Provide concise, factual answers with dates and sources. Keep responses under 400 words.',
+                            },
+                            { role: 'user', content: query },
+                        ],
+                        temperature: 0.1,
+                    }),
+                });
+
+                if (!res.ok) return 'Web search failed.';
+                const data = await res.json();
+                const answer = data.choices?.[0]?.message?.content || 'No results.';
+                const citations = data.citations || [];
+                let result = answer;
+                if (citations.length > 0) {
+                    result += '\n\nSources:\n' + citations.slice(0, 5).map((c, i) => `[${i + 1}] ${c}`).join('\n');
+                }
+                return result;
+            } catch (e) {
+                return `Web search error: ${e.message}`;
+            }
         }
 
         default:
