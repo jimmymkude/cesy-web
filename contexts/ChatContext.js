@@ -53,7 +53,7 @@ export function ChatProvider({ children }) {
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\nCurrent date and time: ${dateStr}, ${timeStr}.`;
+        let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\nCurrent date and time: ${dateStr}, ${timeStr}.\nWhen the user says "today", "tomorrow", "this Friday", etc., resolve these to actual calendar dates using the current date above.`;
 
         // Schedule formatting instructions
         prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), checking their calendar (get_calendar), and more. Use the appropriate tool for each request.`;
