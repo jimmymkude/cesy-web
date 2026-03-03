@@ -173,7 +173,7 @@ body {
 }
 
 body::before {
-  content: 'CESY // OS_CORE';
+  content: 'CESY // CORE';
   position: fixed;
   top: 50%;
   left: -200px;
