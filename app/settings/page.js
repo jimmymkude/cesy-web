@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { VOICE, STORAGE_KEYS } from '@/lib/constants';
 
 export default function SettingsPage() {
@@ -16,10 +16,22 @@ export default function SettingsPage() {
     const [linkCode, setLinkCode] = useState(null);
     const [linkLoading, setLinkLoading] = useState(false);
     const [dbUserId, setDbUserId] = useState(null);
+    const [telegramLinked, setTelegramLinked] = useState(null); // null = checking, true/false = known
+    const [botConfigured, setBotConfigured] = useState(true);
 
     useEffect(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.selectedVoiceId);
         if (saved) setVoiceId(saved);
+    }, []);
+
+    const checkTelegramStatus = useCallback(async (userId) => {
+        try {
+            const res = await fetch(`/api/telegram/status?userId=${userId}`);
+            const data = await res.json();
+            setTelegramLinked(data.linked);
+            setBotConfigured(data.configured);
+            if (data.linked) setLinkCode(null); // Clear code view if linked
+        } catch { /* ignore */ }
     }, []);
 
     // Sync user to get DB ID for Telegram linking
@@ -38,11 +50,14 @@ export default function SettingsPage() {
                     }),
                 });
                 const data = await res.json();
-                if (data.user?.id) setDbUserId(data.user.id);
+                if (data.user?.id) {
+                    setDbUserId(data.user.id);
+                    checkTelegramStatus(data.user.id);
+                }
             } catch { /* ignore */ }
         }
         syncUser();
-    }, [user]);
+    }, [user, checkTelegramStatus]);
 
     useEffect(() => {
         async function loadVoices() {
@@ -184,19 +199,73 @@ export default function SettingsPage() {
                                     Get reminders and alerts via Telegram even when Cesy is closed
                                 </div>
                             </div>
+                            {telegramLinked === true && (
+                                <span style={{
+                                    color: '#22c55e',
+                                    fontWeight: 600,
+                                    fontSize: 'var(--text-sm)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                }}>
+                                    ✅ Linked
+                                </span>
+                            )}
                         </div>
 
                         <div style={{ borderTop: '1px solid var(--color-divider)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)' }}>
-                            {!linkCode ? (
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={generateLinkCode}
-                                    disabled={linkLoading || !dbUserId}
-                                    style={{ width: '100%' }}
-                                >
-                                    {linkLoading ? 'Generating...' : '🔗 Link Telegram'}
-                                </button>
-                            ) : (
+                            {/* Loading state */}
+                            {telegramLinked === null && (
+                                <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-2)' }}>
+                                    Checking status...
+                                </div>
+                            )}
+
+                            {/* Already linked */}
+                            {telegramLinked === true && (
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{
+                                        background: 'rgba(34, 197, 94, 0.1)',
+                                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                                        borderRadius: 'var(--radius-lg)',
+                                        padding: 'var(--space-3)',
+                                        color: '#22c55e',
+                                        fontWeight: 500,
+                                    }}>
+                                        ✅ Your Telegram account is linked. Notifications will be delivered there.
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Not linked — show link flow */}
+                            {telegramLinked === false && !linkCode && (
+                                <div>
+                                    {!botConfigured && (
+                                        <div style={{
+                                            background: 'rgba(234, 179, 8, 0.1)',
+                                            border: '1px solid rgba(234, 179, 8, 0.3)',
+                                            borderRadius: 'var(--radius-lg)',
+                                            padding: 'var(--space-3)',
+                                            color: '#eab308',
+                                            fontSize: 'var(--text-sm)',
+                                            marginBottom: 'var(--space-3)',
+                                        }}>
+                                            ⚠️ Telegram bot is not configured yet. Add TELEGRAM_BOT_TOKEN to environment.
+                                        </div>
+                                    )}
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={generateLinkCode}
+                                        disabled={linkLoading || !dbUserId || !botConfigured}
+                                        style={{ width: '100%' }}
+                                    >
+                                        {linkLoading ? 'Generating...' : '🔗 Link Telegram'}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Link code generated — waiting for user to send /start */}
+                            {telegramLinked === false && linkCode && (
                                 <div style={{ textAlign: 'center' }}>
                                     <div className="setting-label" style={{ marginBottom: 'var(--space-2)' }}>
                                         Your link code (expires in 10 min):
@@ -217,13 +286,20 @@ export default function SettingsPage() {
                                         Open <strong>@CesyAIBot</strong> on Telegram and send:<br />
                                         <code style={{ color: 'var(--color-primary)' }}>/start {linkCode}</code>
                                     </div>
-                                    <button
-                                        className="btn btn-ghost"
-                                        onClick={() => setLinkCode(null)}
-                                        style={{ marginTop: 'var(--space-2)' }}
-                                    >
-                                        Generate New Code
-                                    </button>
+                                    <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center', marginTop: 'var(--space-3)' }}>
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={() => checkTelegramStatus(dbUserId)}
+                                        >
+                                            🔄 Check Status
+                                        </button>
+                                        <button
+                                            className="btn btn-ghost"
+                                            onClick={() => setLinkCode(null)}
+                                        >
+                                            New Code
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
