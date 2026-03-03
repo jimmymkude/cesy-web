@@ -173,12 +173,11 @@ body {
 }
 
 body::before {
-  content: 'CESY // OS_CORE_V1.0';
+  content: 'CESY // OS_CORE';
   position: fixed;
   top: 50%;
-  left: 40px;
+  left: -200px;
   transform: translateY(-50%) rotate(-90deg);
-  transform-origin: left center;
   font-family: var(--font-mono);
   font-size: 140px;
   font-weight: 900;
@@ -193,11 +192,11 @@ body::before {
 
 @keyframes floatText {
   0% {
-    transform: translateY(-30%) rotate(-90deg);
+    transform: translateY(-48%) rotate(-90deg);
   }
 
   100% {
-    transform: translateY(-70%) rotate(-90deg);
+    transform: translateY(-52%) rotate(-90deg);
   }
 }
 
