@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Activity } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
 export default function LoginPage() {
     const { signInWithGoogle, signInWithApple, signInWithEmail, createAccount, error } = useAuth();
@@ -48,7 +48,7 @@ export default function LoginPage() {
             <div className="login-card">
                 <div className="login-header">
                     <div className="login-logo-icon">
-                        <Activity size={48} color="var(--color-bg-primary)" strokeWidth={2.5} />
+                        <Layers size={40} color="var(--color-accent)" strokeWidth={2.5} />
                     </div>
                     <h1 className="login-title">Welcome to Cesy</h1>
                     <p className="login-subtitle">Your AI-powered fitness assistant</p>

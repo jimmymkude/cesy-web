@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { MessageSquare, Dumbbell, Brain, Settings, User, LogOut, Sun, Moon, Activity } from 'lucide-react';
+import { MessageSquare, Dumbbell, Brain, Settings, User, LogOut, Sun, Moon, Layers } from 'lucide-react';
 
 const navItems = [
     {
@@ -47,7 +47,7 @@ export default function AppShell({ children }) {
                     <div className="top-nav-left">
                         <a href="/" className="top-nav-brand">
                             <div className="top-nav-logo-icon">
-                                <Activity size={24} color="var(--color-bg-primary)" strokeWidth={2.5} />
+                                <Layers size={22} color="var(--color-accent)" strokeWidth={2.5} />
                             </div>
                             <span className="top-nav-title">Cesy</span>
                         </a>

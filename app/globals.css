@@ -107,16 +107,16 @@
   --color-bg-hover: #e5e5ea;
   --color-bg-input: #ebebf0;
 
-  --color-text-primary: #1d1d1f;
-  --color-text-secondary: #86868b;
-  --color-text-muted: #d1d1d6;
+  --color-text-primary: #111111;
+  --color-text-secondary: #555555;
+  --color-text-muted: #888888;
   --color-text-inverse: #ffffff;
 
-  --color-bg-glass: rgba(255, 255, 255, 0.75);
+  --color-bg-glass: rgba(255, 255, 255, 0.65);
 
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-border-hover: rgba(0, 0, 0, 0.15);
-  --color-divider: rgba(0, 0, 0, 0.04);
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-border-hover: rgba(0, 0, 0, 0.2);
+  --color-divider: rgba(0, 0, 0, 0.06);
 
   --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(250, 250, 250, 0.8));
   --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5));
@@ -124,6 +124,9 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+  --color-accent-glow: rgba(234, 179, 8, 0.15);
+  /* Less glow in light mode */
 }
 
 /* --- Global Styles --- */
@@ -145,27 +148,42 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-bg-primary);
   background-image:
-    radial-gradient(circle at 15% 50%, rgba(234, 179, 8, 0.05), transparent 40%),
-    radial-gradient(circle at 85% 30%, rgba(0, 210, 180, 0.04), transparent 40%),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    radial-gradient(circle at 15% 50%, rgba(234, 179, 8, 0.03), transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(0, 210, 180, 0.02), transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
   background-attachment: fixed;
   color: var(--color-text-primary);
   line-height: var(--leading-normal);
   min-height: 100vh;
   overflow-x: hidden;
-  animation: bgPulse 15s ease-in-out infinite alternate;
+  position: relative;
 }
 
-@keyframes bgPulse {
-  0% {
-    background-position: 0% 0%, 0% 0%, 0 0, 0 0;
-  }
+body::before {
+  content: 'CESY // OS_CORE_V1.0';
+  position: fixed;
+  top: 50%;
+  left: -200px;
+  transform: translateY(-50%) rotate(-90deg);
+  font-family: var(--font-mono);
+  font-size: 120px;
+  font-weight: 900;
+  color: var(--color-text-primary);
+  opacity: 0.02;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: -1;
+  letter-spacing: -0.05em;
+}
 
-  100% {
-    background-position: 5% 5%, -5% -5%, 20px 20px, 20px 20px;
-  }
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(234, 179, 8, 0.05), transparent 50%),
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 30px 30px, 30px 30px;
 }
 
 a {
@@ -362,29 +380,25 @@ a:hover {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: var(--color-accent-soft);
+  background: transparent;
+  border: 1.5px solid var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: glow-pulse 3s infinite alternate;
-  box-shadow: 0 0 15px var(--color-accent-glow);
   flex-shrink: 0;
+  box-shadow: inset 0 0 10px var(--color-accent-soft);
 }
 
 .top-nav-title {
   font-size: var(--text-xl);
   font-weight: 800;
   font-family: var(--font-sans);
-  background: linear-gradient(90deg, var(--color-text-primary), var(--color-accent), var(--color-text-primary));
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
-  animation: shine 4s linear infinite;
-  letter-spacing: 0.05em;
+  color: var(--color-text-primary);
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  text-shadow: 0 0 15px var(--color-accent-glow);
+  border-left: 2px solid var(--color-accent);
+  padding-left: var(--space-3);
+  margin-left: var(--space-1);
 }
 
 .desktop-nav {
@@ -403,7 +417,7 @@ a:hover {
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   background: none;
   border: none;
   cursor: pointer;
@@ -768,13 +782,13 @@ a:hover {
   width: 64px;
   height: 64px;
   border-radius: var(--radius-md);
-  background: var(--color-accent-soft);
+  background: transparent;
+  border: 2px solid var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--space-5);
-  animation: glow-pulse 3s infinite alternate;
-  box-shadow: 0 0 25px var(--color-accent-glow);
+  box-shadow: inset 0 0 20px var(--color-accent-soft);
 }
 
 .login-title {
