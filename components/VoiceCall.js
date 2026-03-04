@@ -19,6 +19,7 @@ export default function VoiceCall({ onClose }) {
 
     const recognitionRef = useRef(null);
     const audioRef = useRef(null);
+    const audioUnlockedRef = useRef(false); // iOS Safari unlock flag
     const animFrameRef = useRef(null);
     const canvasRef = useRef(null);
     const finalTranscriptRef = useRef('');
@@ -128,10 +129,12 @@ export default function VoiceCall({ onClose }) {
 
             if (audioRef.current) {
                 audioRef.current.pause();
-                audioRef.current = null;
+                audioRef.current.src = '';
             }
 
-            const audio = new Audio(url);
+            // Reuse existing Audio element on iOS (already unlocked), or create a new one
+            const audio = audioRef.current || new Audio();
+            audio.src = url;
             audioRef.current = audio;
 
             audio.onended = () => {
@@ -228,6 +231,25 @@ You have access to tools for managing workouts (manage_workout), setting reminde
         if (!isSupported) {
             setError('Speech recognition not supported. Try Chrome or Safari.');
             return;
+        }
+
+        // iOS Safari requires audio to be started INSIDE a user gesture.
+        // Pre-unlock the audio sandbox by playing a silent blob immediately on tap.
+        if (!audioUnlockedRef.current) {
+            try {
+                const silentBlob = new Blob(
+                    [new Uint8Array([255, 227, 24, 196, 0, 0, 0, 3, 72, 1, 64, 0, 0, 4, 132, 16, 31, 227, 192, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).buffer],
+                    { type: 'audio/mpeg' }
+                );
+                const silentUrl = URL.createObjectURL(silentBlob);
+                const unlockAudio = new Audio(silentUrl);
+                unlockAudio.volume = 0;
+                unlockAudio.play().then(() => {
+                    URL.revokeObjectURL(silentUrl);
+                    audioRef.current = unlockAudio; // Reuse this element for TTS
+                    audioUnlockedRef.current = true;
+                }).catch(() => URL.revokeObjectURL(silentUrl));
+            } catch { /* ignore unlock errors */ }
         }
 
         setError(null);
