@@ -89,7 +89,10 @@ export default function UpcomingPage() {
     }, [user]);
 
     const fetchData = useCallback(async () => {
-        if (!dbUserId) return;
+        if (!dbUserId) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const [eventsRes, workoutRes] = await Promise.all([
@@ -130,10 +133,10 @@ export default function UpcomingPage() {
 
     return (
         <AppShell>
-            <div className="memories-container">
-                <div className="memories-header">
+            <div className="memories-page">
+                <div className="memories-header" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Calendar size={24} color="var(--color-accent)" strokeWidth={2} />
-                    <h2 className="memories-title">Upcoming</h2>
+                    <h2 className="memories-title" style={{ margin: 0 }}>Upcoming</h2>
                     <span className="memories-count">{upcoming.length} event{upcoming.length !== 1 ? 's' : ''}</span>
                 </div>
 
