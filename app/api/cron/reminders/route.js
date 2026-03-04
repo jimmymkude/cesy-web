@@ -17,14 +17,13 @@ export async function GET(request) {
         }
 
         const now = new Date();
-        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
-        // Find ALL due reminders across all users
+        // Find ALL past-due, unnotified reminders (no lookback window — never miss a reminder)
         const reminders = await prisma.reminder.findMany({
             where: {
                 completed: false,
                 notified: false,
-                dueAt: { gte: fiveMinutesAgo, lte: now },
+                dueAt: { lte: now },
             },
             include: {
                 user: { select: { telegramChatId: true, fullName: true } },
