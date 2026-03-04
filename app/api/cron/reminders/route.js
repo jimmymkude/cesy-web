@@ -17,13 +17,15 @@ export async function GET(request) {
         }
 
         const now = new Date();
+        const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
 
-        // Find ALL past-due, unnotified reminders (no lookback window — never miss a reminder)
+        // Find reminders due within the next 30 minutes or already past due
+        // With a 15-min cron interval, this gives users a 15-30 min heads-up
         const reminders = await prisma.reminder.findMany({
             where: {
                 completed: false,
                 notified: false,
-                dueAt: { lte: now },
+                dueAt: { lte: thirtyMinutesFromNow },
             },
             include: {
                 user: { select: { telegramChatId: true, fullName: true } },
