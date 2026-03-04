@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 // GET /api/memories?userId=xxx — Get recent memories
 export async function POST(request) {
     try {
-        const { userId, content, tags = [] } = await request.json();
+        const { userId, content, tags = [], eventDate } = await request.json();
         if (!userId || !content) {
             return NextResponse.json({ error: 'Missing userId or content' }, { status: 400 });
         }
@@ -19,7 +19,7 @@ export async function POST(request) {
         }
 
         const memory = await prisma.memory.create({
-            data: { userId, content, tags },
+            data: { userId, content, tags, eventDate: eventDate ? new Date(eventDate) : null },
         });
 
         return NextResponse.json({ message: 'Memory stored', memory });
@@ -34,14 +34,25 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
         const query = searchParams.get('q');
-        const limit = parseInt(searchParams.get('limit') || '10', 10);
+        const type = searchParams.get('type');
+        const limit = parseInt(searchParams.get('limit') || '50', 10);
 
         if (!userId) {
             return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
         }
 
         let memories;
-        if (query) {
+        if (type === 'events') {
+            // Return event memories sorted by eventDate
+            memories = await prisma.memory.findMany({
+                where: {
+                    userId,
+                    eventDate: { not: null },
+                },
+                orderBy: { eventDate: 'asc' },
+                take: limit,
+            });
+        } else if (query) {
             // Keyword search
             memories = await prisma.memory.findMany({
                 where: {

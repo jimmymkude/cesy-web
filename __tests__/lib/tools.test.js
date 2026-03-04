@@ -209,7 +209,7 @@ describe('executeTool', () => {
 
             expect(result).toContain('Saved');
             expect(prisma.memory.create).toHaveBeenCalledWith({
-                data: { userId: 'u1', content: 'likes coffee', tags: ['preference'] },
+                data: { userId: 'u1', content: 'likes coffee', tags: ['preference'], eventDate: null },
             });
             expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
                 expect.stringContaining('UPDATE memories SET embedding'),
@@ -226,7 +226,28 @@ describe('executeTool', () => {
 
             expect(result).toContain('Saved');
             expect(prisma.memory.create).toHaveBeenCalledWith({
-                data: { userId: 'u1', content: 'likes coffee', tags: ['preference'] },
+                data: { userId: 'u1', content: 'likes coffee', tags: ['preference'], eventDate: null },
+            });
+        });
+
+        it('saves a memory with eventDate for events', async () => {
+            prisma.memory.findFirst.mockResolvedValue(null);
+            prisma.memory.create.mockResolvedValue({ id: 'm2' });
+
+            const result = await executeTool('save_memory', {
+                content: 'Basketball game this Friday',
+                tags: ['event', 'basketball'],
+                eventDate: '2026-03-07T00:00:00',
+            }, 'u1');
+
+            expect(result).toContain('Saved');
+            expect(prisma.memory.create).toHaveBeenCalledWith({
+                data: {
+                    userId: 'u1',
+                    content: 'Basketball game this Friday',
+                    tags: ['event', 'basketball'],
+                    eventDate: expect.any(Date),
+                },
             });
             expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
         });
@@ -247,7 +268,7 @@ describe('executeTool', () => {
             await executeTool('save_memory', { content: 'test' }, 'u1');
 
             expect(prisma.memory.create).toHaveBeenCalledWith({
-                data: { userId: 'u1', content: 'test', tags: [] },
+                data: { userId: 'u1', content: 'test', tags: [], eventDate: null },
             });
         });
     });
@@ -328,6 +349,23 @@ describe('executeTool', () => {
             expect(prisma.memory.update).toHaveBeenCalledWith({
                 where: { id: 'm1' },
                 data: { content: 'likes swimming' },
+            });
+        });
+
+        it('updates memory with eventDate', async () => {
+            prisma.memory.findFirst.mockResolvedValue({ id: 'm1', content: 'basketball game' });
+            prisma.memory.update.mockResolvedValue({});
+
+            const result = await executeTool('update_memory', {
+                search: 'basketball',
+                newContent: 'basketball game at 4pm',
+                eventDate: '2026-03-07T16:00:00',
+            }, 'u1');
+
+            expect(result).toContain('Updated memory');
+            expect(prisma.memory.update).toHaveBeenCalledWith({
+                where: { id: 'm1' },
+                data: { content: 'basketball game at 4pm', eventDate: expect.any(Date) },
             });
         });
 

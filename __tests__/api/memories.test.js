@@ -65,7 +65,7 @@ describe('/api/memories', () => {
             expect(res.status).toBe(200);
             expect(data.memory).toEqual(created);
             expect(prisma.memory.create).toHaveBeenCalledWith({
-                data: { userId: 'u1', content: 'likes basketball', tags: ['sport'] },
+                data: { userId: 'u1', content: 'likes basketball', tags: ['sport'], eventDate: null },
             });
         });
 

@@ -106,6 +106,7 @@ model Memory {
   userId    String   @map("user_id")
   content   String
   tags      Json     @default("[]")
+  eventDate DateTime? @map("event_date")
   embedding Unsupported("vector(512)")? // pgvector — Voyage AI embeddings
   createdAt DateTime @default(now()) @map("created_at")
 

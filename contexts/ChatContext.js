@@ -75,6 +75,9 @@ export function ChatProvider({ children }) {
         // Tool instructions
         prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), cancelling reminders (cancel_reminder), checking their calendar (get_calendar), sending notifications via Telegram (send_notification), and more. Use the appropriate tool for each request. When setting reminders, always craft a short, personalized deliveryMessage in your voice that will be sent via Telegram when the reminder fires — make it feel like YOU are personally nudging the user. Notifications and reminders are delivered via Telegram. You can search memories to check past reminder deliveries.`;
 
+        // Event awareness instructions
+        prompt += `\n\nPay attention to any upcoming plans or events the user mentions, even casually (e.g. "I have a basketball game Friday", "dentist appointment next week"). Save these as memories tagged "event" with an eventDate. You can ask for the time or details but don't push — fill in details naturally over conversations. At the start of conversations, search memories for events that just happened recently and ask about them naturally (e.g. "How was the basketball game yesterday?").`;
+
         // Inject saved workout schedule
         if (workoutRef.current?.schedule?.length > 0) {
             const scheduleLines = workoutRef.current.schedule
