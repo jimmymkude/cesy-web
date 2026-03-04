@@ -38,7 +38,7 @@ export async function POST(request) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'claude-haiku-4-20250514',
+                model: 'claude-haiku-4-5-20251001',
                 max_tokens: 30,
                 system: `You are an AI assistant thinking out loud while processing a user's message.
 Generate a single, natural-sounding thinking filler phrase appropriate for the user's input.
