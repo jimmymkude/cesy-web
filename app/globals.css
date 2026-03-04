@@ -1047,15 +1047,27 @@ a:hover {
   }
 }
 
-@keyframes pulse {
+@keyframes pulse-ring-yellow {
 
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4);
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4);
   }
 
   50% {
-    box-shadow: 0 0 0 8px rgba(255, 71, 87, 0);
+    box-shadow: 0 0 0 8px rgba(234, 179, 8, 0);
+  }
+}
+
+@keyframes pulse-opacity {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
   }
 }
 
@@ -1155,7 +1167,7 @@ a:hover {
 .voice-call-status {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-  animation: pulse 2s infinite;
+  animation: pulse-opacity 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .voice-call-visualizer {
@@ -1241,7 +1253,7 @@ a:hover {
   color: var(--color-bg-primary) !important;
   border-color: var(--color-accent) !important;
   box-shadow: 0 0 30px var(--color-accent-glow);
-  animation: pulse 1.5s infinite;
+  animation: pulse-ring-yellow 1.5s infinite;
 }
 
 .voice-call-mic-disabled {
