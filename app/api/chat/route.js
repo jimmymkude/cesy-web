@@ -33,7 +33,7 @@ export async function POST(request) {
         // Tool use loop — Claude may call tools, we execute and respond
         let finalResponse = null;
         let iterations = 0;
-        const MAX_ITERATIONS = 5; // Safety limit
+        const MAX_ITERATIONS = 15; // Safety limit — workout creation needs ~8-10
         const timersMeta = []; // Collect timer metadata for frontend
 
         while (iterations < MAX_ITERATIONS) {

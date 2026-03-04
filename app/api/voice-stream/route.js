@@ -35,7 +35,7 @@ export async function POST(request) {
     // ── Step 1: Run tool loop (non-streaming) ─────────────────────────────
     let finalResponse = null;
     let iterations = 0;
-    const MAX_ITERATIONS = 5;
+    const MAX_ITERATIONS = 15; // Safety limit — workout creation needs ~8-10
     const timersMeta = [];
 
     while (iterations < MAX_ITERATIONS) {
