@@ -85,64 +85,70 @@ export default function VoiceCall({ onClose }) {
     }, []);
 
     /**
-     * playThinkingFiller — called at t=2700ms by the filler timer.
-     * Pops the pre-baked audio from the buffer (or waits briefly if it arrived slightly late).
-     * If the main response still hasn't arrived after playback, chains a short fallback filler.
+     * playThinkingFiller — called at t=700ms by the filler timer.
+     * Pops the pre-baked audio from the buffer, then loops: fetches the next contextual
+     * filler from Claude Haiku and plays it, until the main response arrives or abort fires.
      */
-    const playThinkingFiller = useCallback(async (mainResolved, abortController) => {
+    const playThinkingFiller = useCallback(async (transcript, mainResolved, abortController) => {
         thinkingAbortRef.current = abortController;
         const voiceId = localStorage.getItem(STORAGE_KEYS.selectedVoiceId) || VOICE.defaultVoiceId;
 
+        const playUrl = async (url) => {
+            await new Promise((resolve) => {
+                const audio = audioRef.current || new Audio();
+                audio.src = url;
+                audioRef.current = audio;
+                audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+                audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+                audio.play().catch(resolve);
+            });
+        };
+
         try {
-            // Wait for the pre-fetched buffer (should already be ready at 2.7s)
+            // ── Phase 1: play the pre-fetched buffer ──────────────────────────
             if (!fillerBufferRef.current) {
                 await new Promise((resolve) => {
                     fillerResolveRef.current = resolve;
-                    // Hard cap: give up after 2s if buffer never arrives
                     setTimeout(() => { resolve(); fillerResolveRef.current = null; }, 2000);
                 });
             }
-
-            const url = fillerBufferRef.current;
+            const firstUrl = fillerBufferRef.current;
             fillerBufferRef.current = null;
-            if (!url || abortController.cancelled) {
-                if (url) URL.revokeObjectURL(url); // revoke if cancelled after pop
+            if (!firstUrl || abortController.cancelled) {
+                if (firstUrl) URL.revokeObjectURL(firstUrl);
                 return;
             }
+            await playUrl(firstUrl);
 
-            const audio = audioRef.current || new Audio();
-            audio.src = url;
-            audioRef.current = audio;
+            // ── Phase 2: loop — keep generating fillers until response arrives ──
+            while (!abortController.cancelled && !mainResolved.done) {
+                await new Promise((r) => setTimeout(r, 1500)); // natural gap between fillers
+                if (abortController.cancelled || mainResolved.done) break;
 
-            await new Promise((resolve) => {
-                audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-                audio.onerror = () => { resolve(); };
-                audio.play().catch(resolve);
-            });
+                const fillerRes = await fetch('/api/voice-filler', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        transcript,
+                        previousFillers: fillerHistoryRef.current.slice(-6),
+                    }),
+                });
+                if (!fillerRes.ok || abortController.cancelled || mainResolved.done) break;
+                const { filler } = await fillerRes.json();
+                if (!filler || abortController.cancelled || mainResolved.done) break;
 
-            // Chain a short filler if the main response still hasn't arrived
-            if (!abortController.cancelled && !mainResolved.done) {
-                await new Promise((r) => setTimeout(r, 300));
-                if (!abortController.cancelled && !mainResolved.done) {
-                    const chainPhrase = pickChain();
-                    const chainRes = await fetch('/api/elevenlabs/tts', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ voiceId, text: chainPhrase }),
-                    });
-                    if (!chainRes.ok || abortController.cancelled) return;
-                    const chainBlob = await chainRes.blob();
-                    if (abortController.cancelled) return;
-                    const chainUrl = URL.createObjectURL(chainBlob);
-                    const chainAudio = audioRef.current || new Audio();
-                    chainAudio.src = chainUrl;
-                    audioRef.current = chainAudio;
-                    await new Promise((resolve) => {
-                        chainAudio.onended = () => { URL.revokeObjectURL(chainUrl); resolve(); };
-                        chainAudio.onerror = () => { resolve(); };
-                        chainAudio.play().catch(resolve);
-                    });
-                }
+                fillerHistoryRef.current.push(filler);
+
+                const ttsRes = await fetch('/api/elevenlabs/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ voiceId, text: filler }),
+                });
+                if (!ttsRes.ok || abortController.cancelled || mainResolved.done) break;
+                const blob = await ttsRes.blob();
+                if (abortController.cancelled || mainResolved.done) { break; }
+                const url = URL.createObjectURL(blob);
+                await playUrl(url);
             }
         } catch { /* ignore filler errors */ }
     }, []);
@@ -291,12 +297,12 @@ export default function VoiceCall({ onClose }) {
         // t=0: Start fetching filler audio immediately in background
         prefetchFiller(text, fillerAbort).catch(() => { });
 
-        // t=2700ms: Play the pre-baked filler (arrives near-instantly since audio is already ready)
+        // t=700ms: Play the pre-baked filler (arrives near-instantly since audio is already ready)
         const fillerTimer = setTimeout(() => {
             if (!mainResolved.done) {
-                playThinkingFiller(mainResolved, fillerAbort).catch(() => { });
+                playThinkingFiller(text, mainResolved, fillerAbort).catch(() => { });
             }
-        }, 2700);
+        }, 700);
 
         // Ensure sync is complete before proceeding
         if (syncPromiseRef.current) {

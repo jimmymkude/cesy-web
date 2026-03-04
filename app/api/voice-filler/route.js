@@ -5,9 +5,8 @@ const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
 /**
  * POST /api/voice-filler
  *
- * Generates a short, contextually appropriate thinking filler
- * (like "Hmm, let me think..." or "Ah, got it...") from the user's transcript.
- * Uses claude-haiku for speed (~300-500ms response time).
+ * Generates a short thinking sound ("Hmm...", "Ah...") using claude-sonnet for quality.
+ * Accepts previousFillers for context continuity in the loop.
  */
 export async function POST(request) {
     try {
@@ -38,17 +37,20 @@ export async function POST(request) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 30,
-                system: `You are an AI assistant thinking out loud while processing a user's message.
-Generate a single, natural-sounding thinking filler phrase appropriate for the user's input.
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 20,
+                system: `You generate single thinking sounds for a voice AI while it processes a request.
+Output ONLY the sound — no explanation, no punctuation except "...", nothing else.
+
+Good examples: "Hmm...", "Uh...", "Ah...", "Mmm...", "Uhh, yeah...", "Oh..."
+Bad examples: "Let me think about that", "Okay let me see", "Sure, one moment" — too long and robotic.
+
 Rules:
-- 3 to 7 words maximum
-- Sound human and natural, like a real person thinking
-- Match the tone: casual for greetings, thoughtful for questions, acknowledging for statements
-- Use natural filler words: "Hmm", "Uhh", "Oh", "Ah", "Let me see", "Mhm", etc.
-- Include a trailing "..." to signal thinking
-- Reply with ONLY the filler phrase, nothing else`,
+- Prefer very short sounds (1-4 words max)
+- Do NOT repeat or paraphrase anything from the previous fillers
+- Do NOT start with the same word as the last filler
+- Sound like a real person thinking, not a chatbot stalling
+- Always end with "..."`,
                 messages,
             }),
         });
