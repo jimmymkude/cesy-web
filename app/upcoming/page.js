@@ -137,7 +137,7 @@ export default function UpcomingPage() {
                 <div className="memories-header" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <Calendar size={24} color="var(--color-accent)" strokeWidth={2} />
                     <h2 className="memories-title" style={{ margin: 0 }}>Upcoming</h2>
-                    <span className="memories-count">{upcoming.length} event{upcoming.length !== 1 ? 's' : ''}</span>
+                    <span className="memories-count" style={{ margin: 0, marginTop: '2px' }}>{upcoming.length} event{upcoming.length !== 1 ? 's' : ''}</span>
                 </div>
 
                 {loading ? (
