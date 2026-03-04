@@ -1237,10 +1237,10 @@ a:hover {
 }
 
 .voice-call-mic-active {
-  background: var(--color-error) !important;
-  color: white !important;
-  border-color: var(--color-error) !important;
-  box-shadow: 0 0 30px rgba(255, 71, 87, 0.5);
+  background: var(--color-accent) !important;
+  color: var(--color-bg-primary) !important;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 30px var(--color-accent-glow);
   animation: pulse 1.5s infinite;
 }
 

@@ -234,8 +234,8 @@ export default function VoiceCall({ onClose }) {
                     : Math.sin(Date.now() / 500 + i * 0.3) * (H * 0.05) + H * 0.05;
 
                 const gradient = ctx.createLinearGradient(0, cy - h / 2, 0, cy + h / 2);
-                gradient.addColorStop(0, 'rgba(37, 99, 235, 0.8)');
-                gradient.addColorStop(1, 'rgba(59, 130, 246, 0.4)');
+                gradient.addColorStop(0, 'rgba(234, 179, 8, 0.8)');
+                gradient.addColorStop(1, 'rgba(250, 204, 21, 0.4)');
 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
