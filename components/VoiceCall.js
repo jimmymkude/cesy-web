@@ -27,68 +27,44 @@ export default function VoiceCall({ onClose }) {
     const dbUserIdRef = useRef(null);
     const workoutRef = useRef(null);
     const syncPromiseRef = useRef(null);
-    const lastFillerRef = useRef(null);    // track last used filler for no-repeat
     const thinkingAbortRef = useRef(null); // cancel chained fillers when response arrives
+    const silenceTimerRef = useRef(null);  // for the continuous mode speech end-of-input timer
 
-    // ── Thinking filler phrases ────────────────────────────────────────
-    // Split by context: questions lean to 'question', statements to 'statement'
-    const FILLERS = {
-        question: [
-            'Hmm, let me think...',
-            'Oh, good question...',
-            'Uhh, let me see...',
-            'Hmm... yeah...',
-            'Ah, interesting...',
-            'Let me think about that...',
-        ],
-        statement: [
-            'Ah, got it...',
-            'Hmm, okay...',
-            'Uhh, sure...',
-            'Mmm, got it...',
-            'Right, okay...',
-            'Ah... yeah...',
-        ],
-        chain: [
-            'Yeah...',
-            'Hmm...',
-            'Okay...',
-            'Uhh...',
-            'Mhm...',
-            'Ah...',
-        ],
-    };
-
-    const pickFiller = (pool) => {
-        const available = pool.filter((p) => p !== lastFillerRef.current);
+    // Play a thinking filler: first fetches a contextual phrase from Claude Haiku,
+    // then speaks it via ElevenLabs. If response still hasn't arrived, chains a short filler.
+    const CHAIN_FILLERS = ['Yeah...', 'Hmm...', 'Okay...', 'Uhh...', 'Mhm...', 'Ah...'];
+    const lastFillerRef = useRef(null);
+    const pickChain = () => {
+        const available = CHAIN_FILLERS.filter((p) => p !== lastFillerRef.current);
         const chosen = available[Math.floor(Math.random() * available.length)];
         lastFillerRef.current = chosen;
         return chosen;
     };
 
-    const getFillerPool = (text) => {
-        const questionWords = ['what', 'how', 'why', 'when', 'where', 'who', 'which', 'could', 'would', 'can', 'is', 'are', 'do', 'does'];
-        const lower = text.toLowerCase();
-        const isQuestion = text.includes('?') || questionWords.some((w) => lower.startsWith(w));
-        return isQuestion ? FILLERS.question : FILLERS.statement;
-    };
-
-    // Play a thinking filler via ElevenLabs, then optionally chain another
     const playThinkingFiller = useCallback(async (transcript, mainResolved) => {
         const voiceId = localStorage.getItem(STORAGE_KEYS.selectedVoiceId) || VOICE.defaultVoiceId;
-        const phrase = pickFiller(getFillerPool(transcript));
         const abortController = { cancelled: false };
         thinkingAbortRef.current = abortController;
 
         try {
-            const res = await fetch('/api/elevenlabs/tts', {
+            // Fire LLM and ElevenLabs in parallel: LLM generates the phrase, then we TTS it
+            const fillerRes = await fetch('/api/voice-filler', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ voiceId, text: phrase }),
+                body: JSON.stringify({ transcript }),
             });
-            if (!res.ok || abortController.cancelled) return;
+            if (!fillerRes.ok || abortController.cancelled) return;
+            const { filler } = await fillerRes.json();
+            if (!filler || abortController.cancelled) return;
 
-            const blob = await res.blob();
+            const ttsRes = await fetch('/api/elevenlabs/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voiceId, text: filler }),
+            });
+            if (!ttsRes.ok || abortController.cancelled) return;
+
+            const blob = await ttsRes.blob();
             if (abortController.cancelled) return;
 
             const url = URL.createObjectURL(blob);
@@ -102,11 +78,11 @@ export default function VoiceCall({ onClose }) {
                 audio.play().catch(resolve);
             });
 
-            // If response hasn't arrived yet, chain another shorter filler
+            // If response hasn't arrived yet, chain a short filler after a natural pause
             if (!abortController.cancelled && !mainResolved.done) {
-                await new Promise((r) => setTimeout(r, 250)); // brief natural pause
+                await new Promise((r) => setTimeout(r, 300));
                 if (!abortController.cancelled && !mainResolved.done) {
-                    const chainPhrase = pickFiller(FILLERS.chain);
+                    const chainPhrase = pickChain();
                     const chainRes = await fetch('/api/elevenlabs/tts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -406,7 +382,7 @@ You have access to tools for managing workouts (manage_workout), setting reminde
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
@@ -423,14 +399,25 @@ You have access to tools for managing workouts (manage_workout), setting reminde
             const display = final || interim;
             setTranscript(display);
             finalTranscriptRef.current = final || interim;
+
+            // Reset the silence timer every time new speech arrives
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = setTimeout(() => {
+                // 1.5s of silence → stop recognition and submit
+                if (recognitionRef.current) {
+                    recognitionRef.current.stop();
+                }
+            }, 1500);
         };
 
         recognition.onend = () => {
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
             recognitionRef.current = null;
             processTranscript(finalTranscriptRef.current);
         };
 
         recognition.onerror = (event) => {
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
             console.error('Speech recognition error:', event.error);
             recognitionRef.current = null;
 
