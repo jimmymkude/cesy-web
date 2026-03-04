@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import AppShell from '@/components/AppShell';
@@ -15,10 +16,24 @@ function ChatArea() {
   const [showVoiceCall, setShowVoiceCall] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const sentQueryRef = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // Auto-send from ?q= query param (e.g. "Chat about this" links)
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && !sentQueryRef.current && !isLoading) {
+      sentQueryRef.current = true;
+      sendMessage(q);
+      // Clean up the URL without a full navigation
+      router.replace('/', { scroll: false });
+    }
+  }, [searchParams, isLoading, sendMessage, router]);
 
   const handleSend = async (e) => {
     e?.preventDefault();
