@@ -275,7 +275,7 @@ export default function UpcomingPage() {
                                                         {nextWorkout.note || `${nextWorkout.workoutType} — tap Chat to get tips and motivation from Cesy.`}
                                                     </p>
                                                     <a
-                                                        href={`/?q=${encodeURIComponent(`I'm about to do my ${nextWorkout.workoutType} workout — give me tips, form cues, and motivation!`)}`}
+                                                        href={`/?q=${encodeURIComponent(`Tell me about my ${nextWorkout.workoutType} workout — tips, key form cues, and what to focus on.`)}`}
                                                         className="flip-chat-btn"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >

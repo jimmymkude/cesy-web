@@ -81,7 +81,7 @@ export default function WorkoutPage() {
                         {sortedWorkouts.map((workout, i) => {
                             const isToday = new Date().getDay() === workout.dayOfWeek;
                             const isFlipped = flippedIdx === i;
-                            const chatPrompt = `I'm about to do my ${workout.workoutType} workout — give me tips, key form cues, and some motivation!`;
+                            const chatPrompt = `Tell me about my ${workout.workoutType} workout — tips, key form cues, and what to focus on.`;
                             const chatUrl = `/?q=${encodeURIComponent(chatPrompt)}`;
                             const fallbackNote = `${workout.workoutType} day.`;
                             const relative = isToday ? 'Today' : (DAY_NAMES[workout.dayOfWeek] || 'Unknown');
