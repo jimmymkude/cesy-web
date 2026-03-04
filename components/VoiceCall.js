@@ -27,35 +27,44 @@ export default function VoiceCall({ onClose }) {
     const dbUserIdRef = useRef(null);
     const workoutRef = useRef(null);
     const syncPromiseRef = useRef(null);
-    const thinkingAbortRef = useRef(null); // cancel chained fillers when response arrives
-    const silenceTimerRef = useRef(null);  // for the continuous mode speech end-of-input timer
+    const thinkingAbortRef = useRef(null);     // { cancelled: bool } — shared abort flag
+    const silenceTimerRef = useRef(null);       // continuous mode speech silence timer
+    const fillerBufferRef = useRef(null);       // pre-baked audio blob URL, ready to play
+    const fillerResolveRef = useRef(null);      // resolves when fillerBufferRef is populated
+    const fillerHistoryRef = useRef([]);        // filler phrases said this session (for context)
 
     // Play a thinking filler: first fetches a contextual phrase from Claude Haiku,
     // then speaks it via ElevenLabs. If response still hasn't arrived, chains a short filler.
     const CHAIN_FILLERS = ['Yeah...', 'Hmm...', 'Okay...', 'Uhh...', 'Mhm...', 'Ah...'];
-    const lastFillerRef = useRef(null);
+    const lastChainRef = useRef(null);
     const pickChain = () => {
-        const available = CHAIN_FILLERS.filter((p) => p !== lastFillerRef.current);
+        const available = CHAIN_FILLERS.filter((p) => p !== lastChainRef.current);
         const chosen = available[Math.floor(Math.random() * available.length)];
-        lastFillerRef.current = chosen;
+        lastChainRef.current = chosen;
         return chosen;
     };
 
-    const playThinkingFiller = useCallback(async (transcript, mainResolved) => {
+    /**
+     * prefetchFiller — fires at t=0, parallel with voice-stream.
+     * Fetches a contextual phrase from Claude Haiku (with history for continuity),
+     * converts to audio via ElevenLabs, stores in fillerBufferRef.
+     */
+    const prefetchFiller = useCallback(async (transcript, abortController) => {
         const voiceId = localStorage.getItem(STORAGE_KEYS.selectedVoiceId) || VOICE.defaultVoiceId;
-        const abortController = { cancelled: false };
-        thinkingAbortRef.current = abortController;
-
         try {
-            // Fire LLM and ElevenLabs in parallel: LLM generates the phrase, then we TTS it
             const fillerRes = await fetch('/api/voice-filler', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transcript }),
+                body: JSON.stringify({
+                    transcript,
+                    previousFillers: fillerHistoryRef.current.slice(-4),
+                }),
             });
             if (!fillerRes.ok || abortController.cancelled) return;
             const { filler } = await fillerRes.json();
             if (!filler || abortController.cancelled) return;
+
+            fillerHistoryRef.current.push(filler); // keep history for next filler's context
 
             const ttsRes = await fetch('/api/elevenlabs/tts', {
                 method: 'POST',
@@ -63,11 +72,44 @@ export default function VoiceCall({ onClose }) {
                 body: JSON.stringify({ voiceId, text: filler }),
             });
             if (!ttsRes.ok || abortController.cancelled) return;
-
             const blob = await ttsRes.blob();
             if (abortController.cancelled) return;
 
-            const url = URL.createObjectURL(blob);
+            fillerBufferRef.current = URL.createObjectURL(blob);
+            // Signal the play timer that the buffer is ready
+            if (fillerResolveRef.current) {
+                fillerResolveRef.current();
+                fillerResolveRef.current = null;
+            }
+        } catch { /* ignore */ }
+    }, []);
+
+    /**
+     * playThinkingFiller — called at t=2700ms by the filler timer.
+     * Pops the pre-baked audio from the buffer (or waits briefly if it arrived slightly late).
+     * If the main response still hasn't arrived after playback, chains a short fallback filler.
+     */
+    const playThinkingFiller = useCallback(async (mainResolved, abortController) => {
+        thinkingAbortRef.current = abortController;
+        const voiceId = localStorage.getItem(STORAGE_KEYS.selectedVoiceId) || VOICE.defaultVoiceId;
+
+        try {
+            // Wait for the pre-fetched buffer (should already be ready at 2.7s)
+            if (!fillerBufferRef.current) {
+                await new Promise((resolve) => {
+                    fillerResolveRef.current = resolve;
+                    // Hard cap: give up after 2s if buffer never arrives
+                    setTimeout(() => { resolve(); fillerResolveRef.current = null; }, 2000);
+                });
+            }
+
+            const url = fillerBufferRef.current;
+            fillerBufferRef.current = null;
+            if (!url || abortController.cancelled) {
+                if (url) URL.revokeObjectURL(url); // revoke if cancelled after pop
+                return;
+            }
+
             const audio = audioRef.current || new Audio();
             audio.src = url;
             audioRef.current = audio;
@@ -78,7 +120,7 @@ export default function VoiceCall({ onClose }) {
                 audio.play().catch(resolve);
             });
 
-            // If response hasn't arrived yet, chain a short filler after a natural pause
+            // Chain a short filler if the main response still hasn't arrived
             if (!abortController.cancelled && !mainResolved.done) {
                 await new Promise((r) => setTimeout(r, 300));
                 if (!abortController.cancelled && !mainResolved.done) {
@@ -238,15 +280,23 @@ export default function VoiceCall({ onClose }) {
         audioQueueRef.current = [];
         isPlayingRef.current = false;
 
-        // Shared flag so the filler can know when the main response has resolved
+        // Shared flag + abort controller for the filler system
         const mainResolved = { done: false };
+        const fillerAbort = { cancelled: false };
 
-        // ── 3-second delayed filler: won't fire if response arrives fast enough ──
+        // Reset per-turn filler buffer
+        fillerBufferRef.current = null;
+        fillerResolveRef.current = null;
+
+        // t=0: Start fetching filler audio immediately in background
+        prefetchFiller(text, fillerAbort).catch(() => { });
+
+        // t=2700ms: Play the pre-baked filler (arrives near-instantly since audio is already ready)
         const fillerTimer = setTimeout(() => {
             if (!mainResolved.done) {
-                playThinkingFiller(text, mainResolved).catch(() => { });
+                playThinkingFiller(mainResolved, fillerAbort).catch(() => { });
             }
-        }, 3000);
+        }, 2700);
 
         // Ensure sync is complete before proceeding
         if (syncPromiseRef.current) {
@@ -317,7 +367,7 @@ You have access to tools for managing workouts (manage_workout), setting reminde
                                 // Cancel filler — response arrived
                                 mainResolved.done = true;
                                 clearTimeout(fillerTimer);
-                                if (thinkingAbortRef.current) thinkingAbortRef.current.cancelled = true;
+                                fillerAbort.cancelled = true;
                                 if (audioRef.current && !audioRef.current.paused) audioRef.current.pause();
                                 setCallState('speaking');
                             }
@@ -346,7 +396,7 @@ You have access to tools for managing workouts (manage_workout), setting reminde
             setCallState('idle');
             setError('Failed to get response: ' + e.message);
         }
-    }, [user, enqueueAudio, playThinkingFiller]);
+    }, [user, enqueueAudio, prefetchFiller, playThinkingFiller]);
 
     // Start listening
     const startListening = useCallback(() => {
@@ -453,6 +503,12 @@ You have access to tools for managing workouts (manage_workout), setting reminde
         audioAbortRef.current = true;
         audioQueueRef.current = [];
         isPlayingRef.current = false;
+
+        // Revoke any pre-baked filler audio that was never played
+        if (fillerBufferRef.current) {
+            URL.revokeObjectURL(fillerBufferRef.current);
+            fillerBufferRef.current = null;
+        }
 
         if (recognitionRef.current) {
             recognitionRef.current.abort();

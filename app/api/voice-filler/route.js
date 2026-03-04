@@ -16,10 +16,19 @@ export async function POST(request) {
             return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
         }
 
-        const { transcript } = await request.json();
+        const { transcript, previousFillers = [] } = await request.json();
         if (!transcript) {
             return NextResponse.json({ error: 'Missing transcript' }, { status: 400 });
         }
+
+        // Build conversation history: alternate filler turns so Claude knows what was already said
+        const messages = [];
+        for (const f of previousFillers) {
+            messages.push({ role: 'user', content: transcript });
+            messages.push({ role: 'assistant', content: f });
+        }
+        // Current turn
+        messages.push({ role: 'user', content: transcript });
 
         const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
             method: 'POST',
@@ -40,7 +49,7 @@ Rules:
 - Use natural filler words: "Hmm", "Uhh", "Oh", "Ah", "Let me see", "Mhm", etc.
 - Include a trailing "..." to signal thinking
 - Reply with ONLY the filler phrase, nothing else`,
-                messages: [{ role: 'user', content: transcript }],
+                messages,
             }),
         });
 
