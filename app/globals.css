@@ -1498,22 +1498,27 @@ a:hover {
   border-radius: var(--radius-lg);
 }
 
-/* 1. Tactile Pull on Hover & Press */
+/* Original Yellow Glow Hover Effect */
 .flip-card:hover .flip-card-inner {
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-}
-
-.flip-card:active .flip-card-inner {
-  transform: scale(0.98);
-  transition: transform 0.1s ease-out;
+  transform: translateY(-2px) scale(1.01);
 }
 
 .flip-card.flipped .flip-card-inner {
   transform: rotateY(180deg);
 }
 
-.flip-card.flipped:active .flip-card-inner {
-  transform: rotateY(180deg) scale(0.98);
+.flip-card.flipped:hover .flip-card-inner {
+  transform: rotateY(180deg) translateY(-2px) scale(1.01);
+}
+
+.flip-card:hover .memory-card,
+.flip-card:hover .flip-card-back {
+  border-color: var(--color-accent);
+  box-shadow: 0 10px 30px var(--color-accent-glow);
+}
+
+.flip-card:hover .memory-card::before {
+  opacity: 1;
 }
 
 .flip-card-front {
