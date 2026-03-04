@@ -41,10 +41,10 @@ t=Nms    LLM response first sentence arrives
 
 | Property | Behaviour |
 |---|---|
-| **Fast responses** | If LLM responds before the timer (e.g. simple greetings < 700ms), filler never fires |
-| **Slow responses** | Filler blob plays near-instantly at the timer mark (no latency added) |
-| **Cancellation** | `fillerAbort` flag shared between prefetch + play; cancelled atomically when response arrives |
-| **Context continuity** | Last 4 filler phrases passed to Claude Haiku as conversation history so fillers don't repeat or feel disconnected |
+| **Fast responses** | If LLM responds before the timer, filler never fires |
+| **Slow responses** | First filler plays near-instantly at the timer mark; loop then keeps fetching + playing new contextual fillers until response arrives |
+| **No repetition** | Up to last 6 fillers passed as history to Claude Haiku each loop iteration |
+| **Cancellation** | `fillerAbort` flag shared between prefetch + play + loop; cancelled atomically when response arrives |
 | **No URL leaks** | Blob revoked in `audio.onended`, in `endCall()`, and in the early-return cancel path |
 
 ---
@@ -52,7 +52,7 @@ t=Nms    LLM response first sentence arrives
 ## Components
 
 ### `app/api/voice-filler/route.js`
-- Accepts `{ transcript, previousFillers[] }`
+- Accepts `{ transcript, previousFillers[] }` (up to last 6 for loop continuity)
 - Builds a message history of previous fillers so Claude Haiku sees what was already said
 - Returns `{ filler: "Hmm, let me think..." }`
 - Model: `claude-haiku-4-5-20251001` (fast/cheap)
@@ -77,6 +77,18 @@ t=Nms    LLM response first sentence arrives
 | `fillerHistoryRef` | Array of filler phrases said this session, passed to `/api/voice-filler` for context |
 | `audioQueueRef` | Queue of blob URLs for sequential LLM sentence playback |
 | `audioAbortRef` | Drains the audio queue (set on `endCall` or new turn start) |
+
+---
+
+## Looping Filler Chain
+
+After the first (pre-buffered) filler plays, `playThinkingFiller` enters a `while` loop:
+1. Waits 300ms (natural pause between fillers)
+2. Calls `/api/voice-filler` with the accumulated `fillerHistoryRef` (last 6 phrases) for context
+3. Pipes result to ElevenLabs → plays audio
+4. Repeats until `mainResolved.done` or `abortController.cancelled`
+
+This means fillers continue indefinitely for very long operations (e.g. tool calls + slow LLM).
 
 ---
 
