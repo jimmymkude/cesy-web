@@ -136,6 +136,9 @@ export default function UpcomingPage() {
                     <h2 className="memories-title" style={{ margin: 0 }}>Upcoming</h2>
                     <span className="memories-count" style={{ margin: 0, marginTop: '2px' }}>{upcoming.length} event{upcoming.length !== 1 ? 's' : ''}</span>
                 </div>
+                <p className="memories-subtitle" style={{ marginBottom: 'var(--space-6)' }}>
+                    Mention plans to Cesy and they&apos;ll appear here
+                </p>
 
                 {loading ? (
                     <div className="memories-loading">
@@ -153,9 +156,6 @@ export default function UpcomingPage() {
                             <div className="memories-empty">
                                 <Calendar size={48} color="var(--color-accent)" strokeWidth={1} style={{ opacity: 0.3 }} />
                                 <p>No events yet</p>
-                                <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>
-                                    Mention plans to Cesy and they&apos;ll appear here
-                                </p>
                             </div>
                         ) : (
                             <>
