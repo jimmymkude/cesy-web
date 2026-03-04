@@ -127,13 +127,14 @@ model WorkoutSchedule {
 }
 
 model Reminder {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  content   String
-  dueAt     DateTime @map("due_at")
-  completed Boolean  @default(false)
-  notified  Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  content         String
+  deliveryMessage String?  @map("delivery_message")
+  dueAt           DateTime @map("due_at")
+  completed       Boolean  @default(false)
+  notified        Boolean  @default(false)
+  createdAt       DateTime @default(now()) @map("created_at")
 
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -6,7 +6,7 @@ const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
 // Tools that require a userId to function
 const USER_SCOPED_TOOLS = [
     'save_memory', 'search_memories', 'update_memory', 'delete_memory',
-    'set_reminder', 'get_calendar', 'manage_workout', 'set_timer',
+    'set_reminder', 'cancel_reminder', 'get_calendar', 'manage_workout', 'set_timer',
     'send_notification',
 ];
 

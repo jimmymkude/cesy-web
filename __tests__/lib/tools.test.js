@@ -24,6 +24,8 @@ jest.mock('@/lib/prisma', () => ({
         reminder: {
             create: jest.fn(),
             findMany: jest.fn(),
+            update: jest.fn(),
+            updateMany: jest.fn(),
         },
         workoutSchedule: {
             findUnique: jest.fn(),
@@ -41,8 +43,8 @@ const prisma = require('@/lib/prisma').default;
 const originalFetch = global.fetch;
 
 describe('TOOLS definitions', () => {
-    it('exports 12 tool definitions', () => {
-        expect(TOOLS).toHaveLength(12);
+    it('exports 13 tool definitions', () => {
+        expect(TOOLS).toHaveLength(13);
     });
 
     it('all tools have required schema fields', () => {
@@ -68,6 +70,7 @@ describe('TOOLS definitions', () => {
         expect(names).toContain('run_calculation');
         expect(names).toContain('manage_workout');
         expect(names).toContain('set_timer');
+        expect(names).toContain('cancel_reminder');
     });
 });
 
@@ -428,6 +431,7 @@ describe('executeTool', () => {
             const result = await executeTool('set_reminder', {
                 content: 'Team meeting',
                 dueAt: '2024-03-15T10:00:00',
+                deliveryMessage: 'Heads up! Team meeting time.',
             }, 'u1');
 
             expect(result).toContain('Reminder set');
@@ -437,6 +441,7 @@ describe('executeTool', () => {
                     userId: 'u1',
                     content: 'Team meeting',
                     dueAt: expect.any(Date),
+                    deliveryMessage: 'Heads up! Team meeting time.',
                 },
             });
         });
@@ -449,6 +454,34 @@ describe('executeTool', () => {
 
             expect(result).toContain('Could not parse date');
             expect(prisma.reminder.create).not.toHaveBeenCalled();
+        });
+    });
+
+    // ── cancel_reminder ──────────────────────────────────────
+    describe('cancel_reminder', () => {
+        it('cancels a matching active reminder', async () => {
+            prisma.reminder.findMany.mockResolvedValue([
+                { id: 'r1', content: 'Go to gym', dueAt: new Date('2024-03-15T18:00:00') },
+            ]);
+            prisma.reminder.update.mockResolvedValue({});
+
+            const result = await executeTool('cancel_reminder', { query: 'gym' }, 'u1');
+
+            expect(result).toContain('Cancelled reminder');
+            expect(result).toContain('Go to gym');
+            expect(prisma.reminder.update).toHaveBeenCalledWith({
+                where: { id: 'r1' },
+                data: { completed: true },
+            });
+        });
+
+        it('returns message when no matching reminder found', async () => {
+            prisma.reminder.findMany.mockResolvedValue([]);
+
+            const result = await executeTool('cancel_reminder', { query: 'nonexistent' }, 'u1');
+
+            expect(result).toContain('No active reminders found');
+            expect(prisma.reminder.update).not.toHaveBeenCalled();
         });
     });
 
