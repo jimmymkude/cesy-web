@@ -5,6 +5,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useCallback } from 'react';
 import { Dumbbell, MessageSquare } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -12,11 +13,12 @@ export default function WorkoutPage() {
     const { user, loading } = useAuth();
     const [schedule, setSchedule] = useState(null);
     const [loadingSchedule, setLoadingSchedule] = useState(true);
+    const [flippedIdx, setFlippedIdx] = useState(null);
+    const router = useRouter();
 
     const fetchSchedule = useCallback(async () => {
         if (!user) return;
         try {
-            // Get user's DB ID
             const syncRes = await fetch('/api/auth/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -51,6 +53,8 @@ export default function WorkoutPage() {
     const workouts = schedule?.schedule || [];
     const sortedWorkouts = [...workouts].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
 
+    const handleFlip = (i) => setFlippedIdx(flippedIdx === i ? null : i);
+
     return (
         <AppShell>
             <div style={{ padding: 'var(--space-8)', maxWidth: '700px', margin: '0 auto' }}>
@@ -73,70 +77,86 @@ export default function WorkoutPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                         {sortedWorkouts.map((workout, i) => {
                             const isToday = new Date().getDay() === workout.dayOfWeek;
+                            const isFlipped = flippedIdx === i;
+                            const chatPrompt = `I'm about to do my ${workout.workoutType} workout — give me tips, key form cues, and some motivation!`;
+                            const chatUrl = `/?q=${encodeURIComponent(chatPrompt)}`;
+                            const fallbackNote = `${workout.workoutType} day — tap "Chat" to get tips and motivation from Cesy.`;
+
                             return (
                                 <div
                                     key={i}
-                                    className="card"
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 'var(--space-4)',
-                                        padding: 'var(--space-4) var(--space-5)',
-                                        borderColor: isToday ? 'var(--color-accent)' : undefined,
-                                        boxShadow: isToday ? 'var(--shadow-glow)' : undefined,
-                                    }}
+                                    className={`flip-card${isFlipped ? ' flipped' : ''}`}
+                                    onClick={() => handleFlip(i)}
+                                    style={{ minHeight: '84px' }}
                                 >
-                                    <div style={{
-                                        width: 48,
-                                        height: 48,
-                                        borderRadius: 'var(--radius-md)',
-                                        background: isToday ? 'var(--gradient-accent)' : 'var(--color-bg-tertiary)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: 'var(--text-lg)',
-                                        flexShrink: 0,
-                                    }}>
-                                        <Dumbbell size={24} color="var(--color-text-primary)" />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 'var(--space-2)',
-                                            marginBottom: 'var(--space-1)',
-                                        }}>
-                                            <span style={{ fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-sm)' }}>
-                                                {workout.dayName || DAY_NAMES[workout.dayOfWeek]}
-                                            </span>
-                                            {isToday && (
-                                                <span style={{
-                                                    fontSize: 'var(--text-xs)',
-                                                    padding: '1px 8px',
-                                                    borderRadius: 'var(--radius-full)',
-                                                    background: 'var(--color-accent-soft)',
-                                                    color: 'var(--color-accent)',
-                                                    fontWeight: 'var(--weight-medium)',
+                                    <div className="flip-card-inner">
+                                        {/* FRONT */}
+                                        <div className="flip-card-front">
+                                            <div
+                                                className="card"
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 'var(--space-4)',
+                                                    padding: 'var(--space-4) var(--space-5)',
+                                                    height: '100%',
+                                                    boxSizing: 'border-box',
+                                                    borderColor: isToday ? 'var(--color-accent)' : undefined,
+                                                    boxShadow: isToday ? 'var(--shadow-glow)' : undefined,
+                                                }}
+                                            >
+                                                <div style={{
+                                                    width: 48, height: 48, borderRadius: 'var(--radius-md)',
+                                                    background: isToday ? 'var(--gradient-accent)' : 'var(--color-bg-tertiary)',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                                 }}>
-                                                    Today
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-                                            {workout.workoutType}
-                                            <span style={{ color: 'var(--color-text-muted)', marginLeft: 'var(--space-2)' }}>
-                                                · {workout.duration} min
-                                            </span>
-                                        </div>
-                                        {workout.equipment?.length > 0 && (
-                                            <div style={{
-                                                fontSize: 'var(--text-xs)',
-                                                color: 'var(--color-text-muted)',
-                                                marginTop: 'var(--space-1)',
-                                            }}>
-                                                Equipment: {workout.equipment.join(', ')}
+                                                    <Dumbbell size={24} color="var(--color-text-primary)" />
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
+                                                        <span style={{ fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-sm)' }}>
+                                                            {workout.dayName || DAY_NAMES[workout.dayOfWeek]}
+                                                        </span>
+                                                        {isToday && (
+                                                            <span style={{
+                                                                fontSize: 'var(--text-xs)', padding: '1px 8px',
+                                                                borderRadius: 'var(--radius-full)',
+                                                                background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+                                                                fontWeight: 'var(--weight-medium)',
+                                                            }}>Today</span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+                                                        {workout.workoutType}
+                                                        <span style={{ color: 'var(--color-text-muted)', marginLeft: 'var(--space-2)' }}>
+                                                            · {workout.duration} min
+                                                        </span>
+                                                    </div>
+                                                    {workout.equipment?.length > 0 && (
+                                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
+                                                            Equipment: {workout.equipment.join(', ')}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        )}
+                                        </div>
+
+                                        {/* BACK */}
+                                        <div className="flip-card-back">
+                                            <span className="flip-card-back-label">
+                                                {isToday ? "Today's session" : DAY_NAMES[workout.dayOfWeek]}
+                                            </span>
+                                            <p className="flip-card-back-note">
+                                                {workout.note || fallbackNote}
+                                            </p>
+                                            <a
+                                                href={chatUrl}
+                                                className="flip-chat-btn"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <MessageSquare size={12} /> Chat with Cesy
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             );
