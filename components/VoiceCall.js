@@ -18,8 +18,8 @@ export default function VoiceCall({ onClose }) {
     const [isSupported, setIsSupported] = useState(false);
 
     const recognitionRef = useRef(null);
-    const audioRef = useRef(null);
-    const audioUnlockedRef = useRef(false); // iOS Safari unlock flag
+    const audioContextRef = useRef(null);   // Web AudioContext — created once in mic tap gesture
+    const currentSourceRef = useRef(null);  // current BufferSource node (for interrupt/stop)
     const animFrameRef = useRef(null);
     const canvasRef = useRef(null);
     const finalTranscriptRef = useRef('');
@@ -29,7 +29,7 @@ export default function VoiceCall({ onClose }) {
     const syncPromiseRef = useRef(null);
     const thinkingAbortRef = useRef(null);     // { cancelled: bool } — shared abort flag
     const silenceTimerRef = useRef(null);       // continuous mode speech silence timer
-    const fillerBufferRef = useRef(null);       // pre-baked audio blob URL, ready to play
+    const fillerBufferRef = useRef(null);       // pre-baked ArrayBuffer, ready to decode + play
     const fillerResolveRef = useRef(null);      // resolves when fillerBufferRef is populated
     const fillerHistoryRef = useRef([]);        // filler phrases said this session (for context)
 
@@ -72,10 +72,10 @@ export default function VoiceCall({ onClose }) {
                 body: JSON.stringify({ voiceId, text: filler }),
             });
             if (!ttsRes.ok || abortController.cancelled) return;
-            const blob = await ttsRes.blob();
+            const arrayBuffer = await ttsRes.arrayBuffer();
             if (abortController.cancelled) return;
 
-            fillerBufferRef.current = URL.createObjectURL(blob);
+            fillerBufferRef.current = arrayBuffer;
             // Signal the play timer that the buffer is ready
             if (fillerResolveRef.current) {
                 fillerResolveRef.current();
@@ -112,13 +112,10 @@ export default function VoiceCall({ onClose }) {
                     setTimeout(() => { resolve(); fillerResolveRef.current = null; }, 2000);
                 });
             }
-            const firstUrl = fillerBufferRef.current;
+            const firstBuf = fillerBufferRef.current;
             fillerBufferRef.current = null;
-            if (!firstUrl || abortController.cancelled) {
-                if (firstUrl) URL.revokeObjectURL(firstUrl);
-                return;
-            }
-            await playUrl(firstUrl);
+            if (!firstBuf || abortController.cancelled) return;
+            await playBuffer(firstBuf);
 
             // ── Phase 2: loop — keep generating fillers until response arrives ──
             while (!abortController.cancelled && !mainResolved.done) {
@@ -145,13 +142,12 @@ export default function VoiceCall({ onClose }) {
                     body: JSON.stringify({ voiceId, text: filler }),
                 });
                 if (!ttsRes.ok || abortController.cancelled || mainResolved.done) break;
-                const blob = await ttsRes.blob();
-                if (abortController.cancelled || mainResolved.done) { break; }
-                const url = URL.createObjectURL(blob);
-                await playUrl(url);
+                const buf = await ttsRes.arrayBuffer();
+                if (abortController.cancelled || mainResolved.done) break;
+                await playBuffer(buf);
             }
         } catch { /* ignore filler errors */ }
-    }, []);
+    }, [playBuffer]);
 
     useEffect(() => {
         setIsSupported(
@@ -230,8 +226,39 @@ export default function VoiceCall({ onClose }) {
         };
     }, [callState, drawVisualizer]);
 
+    // ── AudioContext playback helpers ─────────────────────────────────────
+    // All audio goes through the AudioContext that was created + resumed in the mic tap gesture.
+    // This is the only approach that reliably bypasses mobile browser autoplay restrictions
+    // (both Chrome Android and iOS Safari) without needing a user gesture for every play() call.
+
+    const stopCurrentAudio = useCallback(() => {
+        if (currentSourceRef.current) {
+            try { currentSourceRef.current.stop(); } catch { /* already stopped */ }
+            currentSourceRef.current = null;
+        }
+    }, []);
+
+    const playBuffer = useCallback(async (arrayBuffer) => {
+        const ctx = audioContextRef.current;
+        if (!ctx) return;
+        if (ctx.state === 'suspended') await ctx.resume();
+        try {
+            const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
+            await new Promise((resolve) => {
+                const source = ctx.createBufferSource();
+                source.buffer = decoded;
+                source.connect(ctx.destination);
+                source.onended = resolve;
+                currentSourceRef.current = source;
+                source.start(0);
+            });
+        } catch (e) {
+            console.error('AudioContext playback error:', e);
+        }
+    }, []);
+
     // ── Audio queue for sequential sentence playback ──────────────────────
-    const audioQueueRef = useRef([]);    // array of blob URLs to play in order
+    const audioQueueRef = useRef([]);    // array of ArrayBuffers to play in order
     const isPlayingRef = useRef(false);  // guard against concurrent playback
     const audioAbortRef = useRef(false); // set true to drain the queue
 
@@ -241,21 +268,14 @@ export default function VoiceCall({ onClose }) {
 
         isPlayingRef.current = true;
         while (audioQueueRef.current.length > 0 && !audioAbortRef.current) {
-            const url = audioQueueRef.current.shift();
-            await new Promise((resolve) => {
-                const audio = audioRef.current || new Audio();
-                audio.src = url;
-                audioRef.current = audio;
-                audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-                audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-                audio.play().catch(resolve);
-            });
+            const buf = audioQueueRef.current.shift();
+            await playBuffer(buf);
         }
         isPlayingRef.current = false;
         if (!audioAbortRef.current && audioQueueRef.current.length === 0) {
             setCallState('idle');
         }
-    }, []);
+    }, [playBuffer]);
 
     const enqueueAudio = useCallback(async (text) => {
         const voiceId = localStorage.getItem(STORAGE_KEYS.selectedVoiceId) || VOICE.defaultVoiceId;
@@ -266,10 +286,9 @@ export default function VoiceCall({ onClose }) {
                 body: JSON.stringify({ voiceId, text }),
             });
             if (!res.ok || audioAbortRef.current) return;
-            const blob = await res.blob();
-            if (audioAbortRef.current) { return; }
-            const url = URL.createObjectURL(blob);
-            audioQueueRef.current.push(url);
+            const arrayBuffer = await res.arrayBuffer();
+            if (audioAbortRef.current) return;
+            audioQueueRef.current.push(arrayBuffer);
             drainQueue();
         } catch { /* ignore individual sentence errors */ }
     }, [drainQueue]);
@@ -374,7 +393,7 @@ You have access to tools for managing workouts (manage_workout), setting reminde
                                 mainResolved.done = true;
                                 clearTimeout(fillerTimer);
                                 fillerAbort.cancelled = true;
-                                if (audioRef.current && !audioRef.current.paused) audioRef.current.pause();
+                                stopCurrentAudio();
                                 setCallState('speaking');
                             }
                             enqueueAudio(chunk.sentence);
@@ -402,7 +421,7 @@ You have access to tools for managing workouts (manage_workout), setting reminde
             setCallState('idle');
             setError('Failed to get response: ' + e.message);
         }
-    }, [user, enqueueAudio, prefetchFiller, playThinkingFiller]);
+    }, [user, enqueueAudio, prefetchFiller, playThinkingFiller, stopCurrentAudio]);
 
     // Start listening
     const startListening = useCallback(() => {
@@ -411,23 +430,16 @@ You have access to tools for managing workouts (manage_workout), setting reminde
             return;
         }
 
-        // iOS Safari requires audio to be started INSIDE a user gesture.
-        // Pre-unlock the audio sandbox by playing a silent blob immediately on tap.
-        if (!audioUnlockedRef.current) {
+        // Create/resume AudioContext inside the user gesture — this permanently unlocks
+        // audio playback for both Chrome Android and iOS Safari.
+        if (!audioContextRef.current) {
             try {
-                const silentBlob = new Blob(
-                    [new Uint8Array([255, 227, 24, 196, 0, 0, 0, 3, 72, 1, 64, 0, 0, 4, 132, 16, 31, 227, 192, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]).buffer],
-                    { type: 'audio/mpeg' }
-                );
-                const silentUrl = URL.createObjectURL(silentBlob);
-                const unlockAudio = new Audio(silentUrl);
-                unlockAudio.volume = 0;
-                unlockAudio.play().then(() => {
-                    URL.revokeObjectURL(silentUrl);
-                    audioRef.current = unlockAudio; // Reuse this element for TTS
-                    audioUnlockedRef.current = true;
-                }).catch(() => URL.revokeObjectURL(silentUrl));
-            } catch { /* ignore unlock errors */ }
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) audioContextRef.current = new AC();
+            } catch { /* ignore */ }
+        }
+        if (audioContextRef.current?.state === 'suspended') {
+            audioContextRef.current.resume().catch(() => { });
         }
 
         setError(null);
@@ -510,19 +522,17 @@ You have access to tools for managing workouts (manage_workout), setting reminde
         audioQueueRef.current = [];
         isPlayingRef.current = false;
 
-        // Revoke any pre-baked filler audio that was never played
-        if (fillerBufferRef.current) {
-            URL.revokeObjectURL(fillerBufferRef.current);
-            fillerBufferRef.current = null;
-        }
+        // Clear filler buffer (now an ArrayBuffer, just null it for GC)
+        fillerBufferRef.current = null;
 
         if (recognitionRef.current) {
             recognitionRef.current.abort();
             recognitionRef.current = null;
         }
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current = null;
+        stopCurrentAudio();
+        if (audioContextRef.current) {
+            audioContextRef.current.close().catch(() => { });
+            audioContextRef.current = null;
         }
         if (animFrameRef.current) {
             cancelAnimationFrame(animFrameRef.current);
@@ -538,10 +548,9 @@ You have access to tools for managing workouts (manage_workout), setting reminde
         if (callState === 'listening') {
             stopListening();
         } else if (callState === 'speaking') {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
-            }
+            stopCurrentAudio();
+            audioAbortRef.current = true;
+            audioQueueRef.current = [];
             startListening();
         } else if (callState === 'idle') {
             startListening();
