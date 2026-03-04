@@ -78,6 +78,9 @@ export function ChatProvider({ children }) {
         // Memory saving — be generous
         prompt += `\n\nSave memories generously. Anything that helps you know the user better is worth saving: preferences, habits, opinions, small personal details, goals, moods, routines, relationships, interests. You don't need to search before saving — the system handles deduplication automatically. The more you remember, the more useful and personal you become. Think of yourself as a personal assistant who never forgets what someone told you.`;
 
+        // Amazon cart preparation
+        prompt += `\n\nWhen the user wants to buy something on Amazon, you can prepare a pre-loaded Amazon cart for them. First use web_search to find the product on Amazon and extract the ASIN (10-character product ID). Then call amazon_cart with the ASINs to generate a direct "Add to Cart" link. The user clicks the link and completes checkout on Amazon.`;
+
         // Event awareness instructions
         prompt += `\n\nPay attention to any upcoming plans or events the user mentions, even casually (e.g. "I have a basketball game Friday", "dentist appointment next week"). Save these as memories tagged "event" with an eventDate. You can ask for the time or details but don't push — fill in details naturally over conversations. At the start of conversations, search memories for events that just happened recently and ask about them naturally (e.g. "How was the basketball game yesterday?").`;
 
@@ -149,6 +152,7 @@ export function ChatProvider({ children }) {
                 content: data.message,
                 createdAt: Date.now(),
                 usage: data.usage,
+                amazonCarts: data.amazonCarts || [],
             };
             setMessages((prev) => [...prev, assistantMsg]);
 

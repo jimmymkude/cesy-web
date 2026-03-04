@@ -35,6 +35,7 @@ export async function POST(request) {
         let iterations = 0;
         const MAX_ITERATIONS = 15; // Safety limit — workout creation needs ~8-10
         const timersMeta = []; // Collect timer metadata for frontend
+        const amazonCarts = []; // Collect Amazon cart links for frontend
 
         while (iterations < MAX_ITERATIONS) {
             iterations++;
@@ -93,6 +94,17 @@ export async function POST(request) {
                             } catch { /* not JSON, use as-is */ }
                         }
 
+                        // Extract Amazon cart metadata if present
+                        if (block.name === 'amazon_cart' && typeof result === 'string') {
+                            try {
+                                const parsed = JSON.parse(result);
+                                if (parsed.__amazon_cart) {
+                                    amazonCarts.push(parsed.__amazon_cart);
+                                    result = parsed.message;
+                                }
+                            } catch { /* not JSON, use as-is */ }
+                        }
+
                         toolResults.push({
                             type: 'tool_result',
                             tool_use_id: block.id,
@@ -129,6 +141,11 @@ export async function POST(request) {
         // Include timer metadata if any timers were set
         if (timersMeta.length > 0) {
             response.timers = timersMeta;
+        }
+
+        // Include Amazon cart links if any were generated
+        if (amazonCarts.length > 0) {
+            response.amazonCarts = amazonCarts;
         }
 
         return NextResponse.json(response);

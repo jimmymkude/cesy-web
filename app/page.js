@@ -7,7 +7,7 @@ import { useChat } from '@/contexts/ChatContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import VoiceCall from '@/components/VoiceCall';
-import { MessageSquare, Mic, Trash2, Send } from 'lucide-react';
+import { MessageSquare, Mic, Trash2, Send, ShoppingCart } from 'lucide-react';
 
 function ChatArea() {
   const { user } = useAuth();
@@ -78,6 +78,22 @@ function ChatArea() {
               </div>
               <div className="message-bubble">
                 {msg.content}
+                {msg.amazonCarts?.length > 0 && (
+                  <div style={{ marginTop: '12px' }}>
+                    {msg.amazonCarts.map((cart, ci) => (
+                      <a
+                        key={ci}
+                        href={cart.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="amazon-cart-btn"
+                      >
+                        <ShoppingCart size={16} />
+                        <span>Open Amazon Cart ({cart.items.length} item{cart.items.length > 1 ? 's' : ''})</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
