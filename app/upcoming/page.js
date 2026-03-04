@@ -114,8 +114,9 @@ export default function UpcomingPage() {
     };
 
     const now = new Date();
-    const upcoming = events.filter((e) => new Date(e.eventDate) >= new Date(now.toDateString()));
-    const past = events.filter((e) => new Date(e.eventDate) < new Date(now.toDateString()));
+    // An event is only "past" if its exact datetime (not just date) has passed
+    const upcoming = events.filter((e) => new Date(e.eventDate) >= now);
+    const past = events.filter((e) => new Date(e.eventDate) < now);
     const hasContent = upcoming.length > 0 || past.length > 0 || nextWorkout;
 
     const renderEventCard = (event, isPastCard = false) => {
