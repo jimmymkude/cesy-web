@@ -206,57 +206,51 @@ export default function VoiceCall({ onClose }) {
         };
     }, [callState, drawVisualizer]);
 
-    // Play TTS via ElevenLabs
-    const speakResponse = useCallback(async (text) => {
-        setCallState('speaking');
-        setCesyResponse(text);
+    // ── Audio queue for sequential sentence playback ──────────────────────
+    const audioQueueRef = useRef([]);    // array of blob URLs to play in order
+    const isPlayingRef = useRef(false);  // guard against concurrent playback
+    const audioAbortRef = useRef(false); // set true to drain the queue
 
+    const drainQueue = useCallback(async () => {
+        if (isPlayingRef.current || audioAbortRef.current) return;
+        if (audioQueueRef.current.length === 0) return;
+
+        isPlayingRef.current = true;
+        while (audioQueueRef.current.length > 0 && !audioAbortRef.current) {
+            const url = audioQueueRef.current.shift();
+            await new Promise((resolve) => {
+                const audio = audioRef.current || new Audio();
+                audio.src = url;
+                audioRef.current = audio;
+                audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+                audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+                audio.play().catch(resolve);
+            });
+        }
+        isPlayingRef.current = false;
+        if (!audioAbortRef.current && audioQueueRef.current.length === 0) {
+            setCallState('idle');
+        }
+    }, []);
+
+    const enqueueAudio = useCallback(async (text) => {
         const voiceId = localStorage.getItem(STORAGE_KEYS.selectedVoiceId) || VOICE.defaultVoiceId;
-
         try {
             const res = await fetch('/api/elevenlabs/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ voiceId, text }),
             });
-
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || `TTS failed (${res.status})`);
-            }
-
+            if (!res.ok || audioAbortRef.current) return;
             const blob = await res.blob();
+            if (audioAbortRef.current) { return; }
             const url = URL.createObjectURL(blob);
+            audioQueueRef.current.push(url);
+            drainQueue();
+        } catch { /* ignore individual sentence errors */ }
+    }, [drainQueue]);
 
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.src = '';
-            }
-
-            // Reuse existing Audio element on iOS (already unlocked), or create a new one
-            const audio = audioRef.current || new Audio();
-            audio.src = url;
-            audioRef.current = audio;
-
-            audio.onended = () => {
-                setCallState('idle');
-                URL.revokeObjectURL(url);
-            };
-
-            audio.onerror = () => {
-                setCallState('idle');
-                setError('Audio playback failed');
-            };
-
-            await audio.play();
-        } catch (e) {
-            console.error('TTS error:', e);
-            setCallState('idle');
-            setError('Voice synthesis failed: ' + e.message);
-        }
-    }, []);
-
-    // Send to Claude directly (no ChatContext dependency)
+    // Send to Claude via streaming route — pipes each sentence to ElevenLabs immediately
     const processTranscript = useCallback(async (text) => {
         if (!text.trim()) {
             setCallState('idle');
@@ -264,12 +258,19 @@ export default function VoiceCall({ onClose }) {
         }
 
         setCallState('thinking');
+        audioAbortRef.current = false;
+        audioQueueRef.current = [];
+        isPlayingRef.current = false;
 
         // Shared flag so the filler can know when the main response has resolved
         const mainResolved = { done: false };
 
-        // Fire thinking filler in parallel — don't await it
-        playThinkingFiller(text, mainResolved).catch(() => { });
+        // ── 1-second delayed filler: won't fire if response arrives fast enough ──
+        const fillerTimer = setTimeout(() => {
+            if (!mainResolved.done) {
+                playThinkingFiller(text, mainResolved).catch(() => { });
+            }
+        }, 1000);
 
         // Ensure sync is complete before proceeding
         if (syncPromiseRef.current) {
@@ -296,11 +297,10 @@ You have access to tools for managing workouts (manage_workout), setting reminde
             systemPrompt += `\n\nThe user's current workout schedule is:\n${scheduleLines}\n\nReference this schedule when asked about workouts.`;
         }
 
-        // Add user message to voice history
         voiceHistoryRef.current.push({ role: 'user', content: text });
 
         try {
-            const res = await fetch('/api/chat', {
+            const res = await fetch('/api/voice-stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -310,35 +310,67 @@ You have access to tools for managing workouts (manage_workout), setting reminde
                 }),
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
-                throw new Error(data.error || 'Chat failed');
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Voice stream failed');
             }
 
-            if (data.message) {
-                // Signal to filler chain that response has arrived
-                mainResolved.done = true;
-                if (thinkingAbortRef.current) thinkingAbortRef.current.cancelled = true;
+            // ── Read sentence chunks from the stream ──────────────────────────
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullText = '';
+            let firstSentenceReceived = false;
 
-                // Small pause to let any in-flight filler audio finish cleanly
-                if (audioRef.current && !audioRef.current.paused) {
-                    audioRef.current.pause();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Hold last incomplete line
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    try {
+                        const chunk = JSON.parse(line);
+
+                        if (chunk.sentence) {
+                            if (!firstSentenceReceived) {
+                                firstSentenceReceived = true;
+                                // Cancel filler — response arrived
+                                mainResolved.done = true;
+                                clearTimeout(fillerTimer);
+                                if (thinkingAbortRef.current) thinkingAbortRef.current.cancelled = true;
+                                if (audioRef.current && !audioRef.current.paused) audioRef.current.pause();
+                                setCallState('speaking');
+                            }
+                            enqueueAudio(chunk.sentence);
+                        }
+
+                        if (chunk.done) {
+                            fullText = chunk.fullText || fullText;
+                            setCesyResponse(fullText);
+                            voiceHistoryRef.current.push({ role: 'assistant', content: fullText });
+                        }
+                    } catch { /* malformed chunk, skip */ }
                 }
-
-                // Add assistant response to voice history
-                voiceHistoryRef.current.push({ role: 'assistant', content: data.message });
-                speakResponse(data.message);
-            } else {
-                setCallState('idle');
-                setError('No response from Cesy');
             }
+
+            // Edge case: if no sentences were streamed, fallback gracefully
+            if (!firstSentenceReceived) {
+                mainResolved.done = true;
+                clearTimeout(fillerTimer);
+                setCallState('idle');
+            }
+
         } catch (e) {
+            clearTimeout(fillerTimer);
             console.error('Voice chat error:', e);
             setCallState('idle');
             setError('Failed to get response: ' + e.message);
         }
-    }, [user, speakResponse]);
+    }, [user, enqueueAudio, playThinkingFiller]);
 
     // Start listening
     const startListening = useCallback(() => {
@@ -430,6 +462,11 @@ You have access to tools for managing workouts (manage_workout), setting reminde
     }, []);
 
     const endCall = useCallback(() => {
+        // Abort audio queue
+        audioAbortRef.current = true;
+        audioQueueRef.current = [];
+        isPlayingRef.current = false;
+
         if (recognitionRef.current) {
             recognitionRef.current.abort();
             recognitionRef.current = null;
