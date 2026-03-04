@@ -73,7 +73,7 @@ export function ChatProvider({ children }) {
         let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\nCurrent date and time: ${dateStr}, ${timeStr}.\nWhen the user says "today", "tomorrow", "this Friday", etc., resolve these to actual calendar dates using the current date above.`;
 
         // Tool instructions
-        prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), checking their calendar (get_calendar), and more. Use the appropriate tool for each request.`;
+        prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), checking their calendar (get_calendar), sending notifications via Telegram (send_notification), and more. Use the appropriate tool for each request. Notifications and reminders are delivered via Telegram when the user has linked their account. You can search memories to check past reminder deliveries.`;
 
         // Inject saved workout schedule
         if (workoutRef.current?.schedule?.length > 0) {

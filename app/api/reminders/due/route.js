@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { sendNotificationToUser } from '@/lib/telegram';
 
 // GET /api/reminders/due?userId=xxx
 // Returns reminders that are due within the last 5 minutes and not yet notified.
-// Marks returned reminders as notified to prevent duplicates.
+// Marks returned reminders as notified and delivers them via Telegram.
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -35,13 +36,33 @@ export async function GET(request) {
             });
         }
 
-        return NextResponse.json({
-            reminders: reminders.map((r) => ({
-                id: r.id,
-                content: r.content,
-                dueAt: r.dueAt,
-            })),
-        });
+        // Deliver each reminder via Telegram and log as memory
+        const deliveryResults = [];
+        for (const reminder of reminders) {
+            const telegramMsg = `⏰ Reminder: ${reminder.content}`;
+            const result = await sendNotificationToUser(userId, telegramMsg);
+
+            if (result.sent) {
+                // Save a memory so Cesy is aware of the delivery
+                const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                await prisma.memory.create({
+                    data: {
+                        userId,
+                        content: `Sent reminder via Telegram: "${reminder.content}" on ${dateStr}`,
+                        tags: ['reminder', 'telegram', 'delivered'],
+                    },
+                });
+            }
+
+            deliveryResults.push({
+                id: reminder.id,
+                content: reminder.content,
+                dueAt: reminder.dueAt,
+                telegramSent: result.sent,
+            });
+        }
+
+        return NextResponse.json({ reminders: deliveryResults });
     } catch (error) {
         console.error('Due reminders error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
