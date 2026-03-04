@@ -1400,15 +1400,7 @@ a:hover {
   pointer-events: none;
 }
 
-.memory-card:hover {
-  border-color: var(--color-accent);
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 10px 30px var(--color-accent-glow);
-}
 
-.memory-card:hover::before {
-  opacity: 1;
-}
 
 .memory-content {
   flex: 1;
@@ -1503,6 +1495,7 @@ a:hover {
   transform-style: preserve-3d;
   /* 4. Spring Bounce curve */
   transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: var(--radius-lg);
 }
 
 /* 1. Tactile Pull on Hover & Press */
