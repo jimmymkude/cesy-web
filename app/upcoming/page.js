@@ -81,7 +81,7 @@ export default function UpcomingPage() {
             }),
         })
             .then((r) => r.json())
-            .then((data) => setDbUserId(data.userId))
+            .then((data) => setDbUserId(data.user?.id))
             .catch(console.error);
     }, [user]);
 
