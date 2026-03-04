@@ -34,15 +34,12 @@ const formatEventDate = (dateStr) => {
 const getNextWorkout = (schedule) => {
     if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return null;
 
-    const todayIdx = new Date().getDay();
+    const todayIdx = new Date().getDay(); // 0 = Sunday
 
     // Look through the next 7 days to find the nearest workout
     for (let offset = 0; offset < 7; offset++) {
         const checkIdx = (todayIdx + offset) % 7;
-        const dayName = DAYS[checkIdx];
-        const workout = schedule.find((w) =>
-            w.dayOfWeek && w.dayOfWeek.toLowerCase() === dayName.toLowerCase()
-        );
+        const workout = schedule.find((w) => w.dayOfWeek === checkIdx);
         if (workout) {
             let relative;
             if (offset === 0) relative = 'Today';
@@ -177,8 +174,8 @@ export default function UpcomingPage() {
                                             </div>
                                             <p className="memory-content">{nextWorkout.workoutType}</p>
                                             <div style={{ display: 'flex', gap: '8px', fontSize: '0.75rem', opacity: 0.6, marginTop: '4px' }}>
-                                                {nextWorkout.duration && <span>{nextWorkout.duration}</span>}
-                                                {nextWorkout.equipment && <span>• {nextWorkout.equipment}</span>}
+                                                {nextWorkout.duration && <span>{nextWorkout.duration} min</span>}
+                                                {nextWorkout.equipment?.length > 0 && <span>• {Array.isArray(nextWorkout.equipment) ? nextWorkout.equipment.join(', ') : nextWorkout.equipment}</span>}
                                             </div>
                                         </div>
                                     </div>
