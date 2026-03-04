@@ -33,6 +33,35 @@ export default function VoiceCall({ onClose }) {
     const fillerResolveRef = useRef(null);      // resolves when fillerBufferRef is populated
     const fillerHistoryRef = useRef([]);        // filler phrases said this session (for context)
 
+    // ── AudioContext playback helpers ─────────────────────────────────────
+    // Defined first so that prefetchFiller/playThinkingFiller can reference them.
+
+    const stopCurrentAudio = useCallback(() => {
+        if (currentSourceRef.current) {
+            try { currentSourceRef.current.stop(); } catch { /* already stopped */ }
+            currentSourceRef.current = null;
+        }
+    }, []);
+
+    const playBuffer = useCallback(async (arrayBuffer) => {
+        const ctx = audioContextRef.current;
+        if (!ctx) return;
+        if (ctx.state === 'suspended') await ctx.resume();
+        try {
+            const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
+            await new Promise((resolve) => {
+                const source = ctx.createBufferSource();
+                source.buffer = decoded;
+                source.connect(ctx.destination);
+                source.onended = resolve;
+                currentSourceRef.current = source;
+                source.start(0);
+            });
+        } catch (e) {
+            console.error('AudioContext playback error:', e);
+        }
+    }, []);
+
     // Play a thinking filler: first fetches a contextual phrase from Claude Haiku,
     // then speaks it via ElevenLabs. If response still hasn't arrived, chains a short filler.
     const CHAIN_FILLERS = ['Yeah...', 'Hmm...', 'Okay...', 'Uhh...', 'Mhm...', 'Ah...'];
@@ -226,36 +255,6 @@ export default function VoiceCall({ onClose }) {
         };
     }, [callState, drawVisualizer]);
 
-    // ── AudioContext playback helpers ─────────────────────────────────────
-    // All audio goes through the AudioContext that was created + resumed in the mic tap gesture.
-    // This is the only approach that reliably bypasses mobile browser autoplay restrictions
-    // (both Chrome Android and iOS Safari) without needing a user gesture for every play() call.
-
-    const stopCurrentAudio = useCallback(() => {
-        if (currentSourceRef.current) {
-            try { currentSourceRef.current.stop(); } catch { /* already stopped */ }
-            currentSourceRef.current = null;
-        }
-    }, []);
-
-    const playBuffer = useCallback(async (arrayBuffer) => {
-        const ctx = audioContextRef.current;
-        if (!ctx) return;
-        if (ctx.state === 'suspended') await ctx.resume();
-        try {
-            const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
-            await new Promise((resolve) => {
-                const source = ctx.createBufferSource();
-                source.buffer = decoded;
-                source.connect(ctx.destination);
-                source.onended = resolve;
-                currentSourceRef.current = source;
-                source.start(0);
-            });
-        } catch (e) {
-            console.error('AudioContext playback error:', e);
-        }
-    }, []);
 
     // ── Audio queue for sequential sentence playback ──────────────────────
     const audioQueueRef = useRef([]);    // array of ArrayBuffers to play in order
