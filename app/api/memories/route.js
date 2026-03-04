@@ -43,11 +43,12 @@ export async function GET(request) {
 
         let memories;
         if (type === 'events') {
-            // Return event memories sorted by eventDate
+            // Return future events + past events within the last 7 days
+            const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
             memories = await prisma.memory.findMany({
                 where: {
                     userId,
-                    eventDate: { not: null },
+                    eventDate: { not: null, gte: oneWeekAgo },
                 },
                 orderBy: { eventDate: 'asc' },
                 take: limit,
