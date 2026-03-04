@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { generateEmbedding, toVectorLiteral } from '@/lib/tools';
 
 // GET /api/cron/reminders
 // Batch endpoint for Railway cron: finds ALL users' due reminders,
@@ -50,15 +51,27 @@ export async function GET(request) {
             if (result.ok) {
                 delivered++;
 
-                // Save a delivery memory so Cesy is aware
+                // Save a delivery memory so Cesy is aware (with embedding for searchability)
                 const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                await prisma.memory.create({
+                const memContent = `Sent reminder via Telegram: "${reminder.content}" on ${dateStr}`;
+                const memory = await prisma.memory.create({
                     data: {
                         userId: reminder.userId,
-                        content: `Sent reminder via Telegram: "${reminder.content}" on ${dateStr}`,
+                        content: memContent,
                         tags: ['reminder', 'telegram', 'delivered'],
                     },
                 });
+
+                // Embed the delivery memory so search_memories can find it
+                const embedding = await generateEmbedding(memContent);
+                if (embedding) {
+                    const vectorStr = toVectorLiteral(embedding);
+                    await prisma.$executeRawUnsafe(
+                        `UPDATE memories SET embedding = $1::vector WHERE id = $2`,
+                        vectorStr,
+                        memory.id
+                    );
+                }
             }
         }
 
