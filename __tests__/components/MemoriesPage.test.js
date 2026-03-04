@@ -84,7 +84,7 @@ describe('MemoriesPage', () => {
         await waitFor(() => {
             expect(container.textContent).toContain('Likes basketball');
             expect(container.textContent).toContain('Prefers morning workouts');
-            expect(container.textContent).toContain('2 memories');
+            expect(container.textContent).toContain('2 items');
         });
     });
 
@@ -182,7 +182,7 @@ describe('MemoriesPage', () => {
         const { container } = render(<MemoriesPage />);
 
         await waitFor(() => {
-            expect(container.textContent).toContain('1 memory');
+            expect(container.textContent).toContain('1 item');
         });
     });
 

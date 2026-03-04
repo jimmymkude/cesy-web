@@ -214,8 +214,8 @@ export default function MemoriesPage() {
                                                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                                                     {formatDate(memory.createdAt)}
                                                 </span>
-                                                <a href={chatUrl} className="flip-chat-btn" onClick={(e) => e.stopPropagation()}>
-                                                    <MessageSquare size={14} /> Chat
+                                                <a href={chatUrl} className="flip-chat-btn" onClick={(e) => e.stopPropagation()} aria-label="Chat about this">
+                                                    <MessageSquare size={16} />
                                                 </a>
                                             </div>
                                         </div>

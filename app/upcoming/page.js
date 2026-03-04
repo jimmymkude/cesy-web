@@ -188,8 +188,8 @@ export default function UpcomingPage() {
                             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                                 {timeFormatted || 'Time TBD'}
                             </span>
-                            <a href={chatUrl} className="flip-chat-btn" onClick={(e) => e.stopPropagation()}>
-                                <MessageSquare size={12} /> Chat
+                            <a href={chatUrl} className="flip-chat-btn" onClick={(e) => e.stopPropagation()} aria-label="Chat about this">
+                                <MessageSquare size={16} />
                             </a>
                         </div>
                     </div>
@@ -274,7 +274,7 @@ export default function UpcomingPage() {
                                                         className="flip-chat-btn"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        <MessageSquare size={12} /> Chat with Cesy
+                                                        <MessageSquare size={12} />
                                                     </a>
                                                 </div>
                                             </div>

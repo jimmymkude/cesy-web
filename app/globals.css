@@ -1364,7 +1364,7 @@ a:hover {
   font-weight: 600;
 }
 
-.memories-list {
+.memory-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--space-4);
@@ -1509,7 +1509,16 @@ a:hover {
   transform: rotateY(180deg);
 }
 
-.flip-card-front,
+.flip-card-front {
+  position: relative;
+  /* Let front content dictate the card's height */
+  width: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--radius-lg);
+  z-index: 2;
+}
+
 .flip-card-back {
   position: absolute;
   top: 0;
@@ -1525,14 +1534,9 @@ a:hover {
   /* Firefox */
 }
 
-.flip-card-front::-webkit-scrollbar,
 .flip-card-back::-webkit-scrollbar {
   display: none;
   /* Chrome, Safari, Edge */
-}
-
-.flip-card-front {
-  z-index: 2;
 }
 
 .flip-card-back {

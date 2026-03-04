@@ -129,8 +129,9 @@ export default function WorkoutPage() {
                                                 href={chatUrl}
                                                 className="flip-chat-btn"
                                                 onClick={(e) => e.stopPropagation()}
+                                                aria-label="Chat about this"
                                             >
-                                                <MessageSquare size={14} /> Chat
+                                                <MessageSquare size={16} />
                                             </a>
                                         </div>
                                     </div>
