@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Calendar, Trash2, X, Clock } from 'lucide-react';
+import { Calendar, Trash2, X, Clock, Dumbbell } from 'lucide-react';
 import AppShell from '@/components/AppShell';
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const formatEventDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -29,6 +31,29 @@ const formatEventDate = (dateStr) => {
     return { dateFormatted, timeFormatted, relative, isPast: diffDays < 0, isToday: diffDays === 0 };
 };
 
+const getNextWorkout = (schedule) => {
+    if (!schedule || !Array.isArray(schedule) || schedule.length === 0) return null;
+
+    const todayIdx = new Date().getDay();
+
+    // Look through the next 7 days to find the nearest workout
+    for (let offset = 0; offset < 7; offset++) {
+        const checkIdx = (todayIdx + offset) % 7;
+        const dayName = DAYS[checkIdx];
+        const workout = schedule.find((w) =>
+            w.dayOfWeek && w.dayOfWeek.toLowerCase() === dayName.toLowerCase()
+        );
+        if (workout) {
+            let relative;
+            if (offset === 0) relative = 'Today';
+            else if (offset === 1) relative = 'Tomorrow';
+            else relative = DAYS[checkIdx];
+            return { ...workout, relative, daysAway: offset };
+        }
+    }
+    return null;
+};
+
 const getTagColor = (tag) => {
     const colors = ['#facc15', '#00d2b4', '#ff4757', '#a855f7', '#3b82f6', '#f97316', '#fbbf24'];
     let hash = 0;
@@ -41,6 +66,7 @@ const getTagColor = (tag) => {
 export default function UpcomingPage() {
     const { user } = useAuth();
     const [events, setEvents] = useState([]);
+    const [nextWorkout, setNextWorkout] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
@@ -62,13 +88,19 @@ export default function UpcomingPage() {
             .catch(console.error);
     }, [user]);
 
-    const fetchEvents = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         if (!dbUserId) return;
         setLoading(true);
         try {
-            const res = await fetch(`/api/memories?userId=${dbUserId}&type=events`);
-            const data = await res.json();
-            setEvents(data.memories || []);
+            const [eventsRes, workoutRes] = await Promise.all([
+                fetch(`/api/memories?userId=${dbUserId}&type=events`),
+                fetch(`/api/workout?userId=${dbUserId}`),
+            ]);
+            const eventsData = await eventsRes.json();
+            const workoutData = await workoutRes.json();
+
+            setEvents(eventsData.memories || []);
+            setNextWorkout(getNextWorkout(workoutData.schedule?.schedule));
         } catch (err) {
             setError(err.message);
         } finally {
@@ -76,7 +108,7 @@ export default function UpcomingPage() {
         }
     }, [dbUserId]);
 
-    useEffect(() => { fetchEvents(); }, [fetchEvents]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const handleDelete = async (id) => {
         setDeletingId(id);
@@ -94,6 +126,7 @@ export default function UpcomingPage() {
     const now = new Date();
     const upcoming = events.filter((e) => new Date(e.eventDate) >= new Date(now.toDateString()));
     const past = events.filter((e) => new Date(e.eventDate) < new Date(now.toDateString()));
+    const hasContent = upcoming.length > 0 || past.length > 0 || nextWorkout;
 
     return (
         <AppShell>
@@ -116,7 +149,7 @@ export default function UpcomingPage() {
                     </div>
                 ) : (
                     <>
-                        {upcoming.length === 0 && past.length === 0 ? (
+                        {!hasContent ? (
                             <div className="memories-empty">
                                 <Calendar size={48} color="var(--color-accent)" strokeWidth={1} style={{ opacity: 0.3 }} />
                                 <p>No events yet</p>
@@ -126,6 +159,27 @@ export default function UpcomingPage() {
                             </div>
                         ) : (
                             <>
+                                {nextWorkout && (
+                                    <div className="memory-grid" style={{ marginBottom: '1rem' }}>
+                                        <div
+                                            className="memory-card"
+                                            style={nextWorkout.daysAway === 0 ? { borderColor: 'var(--color-accent)', borderWidth: '1px', borderStyle: 'solid' } : {}}
+                                        >
+                                            <div className="memory-card-header">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--color-accent)' }}>
+                                                    <Dumbbell size={14} />
+                                                    <span>{nextWorkout.relative}</span>
+                                                </div>
+                                                <span className="memory-tag" style={{ '--tag-color': '#00d2b4', fontSize: '0.7rem' }}>workout</span>
+                                            </div>
+                                            <p className="memory-content">{nextWorkout.workoutType}</p>
+                                            <div style={{ display: 'flex', gap: '8px', fontSize: '0.75rem', opacity: 0.6, marginTop: '4px' }}>
+                                                {nextWorkout.duration && <span>{nextWorkout.duration}</span>}
+                                                {nextWorkout.equipment && <span>• {nextWorkout.equipment}</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 {upcoming.length > 0 && (
                                     <div className="memory-grid">
                                         {upcoming.map((event) => {
