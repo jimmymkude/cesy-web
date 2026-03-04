@@ -265,12 +265,12 @@ export default function VoiceCall({ onClose }) {
         // Shared flag so the filler can know when the main response has resolved
         const mainResolved = { done: false };
 
-        // ── 1-second delayed filler: won't fire if response arrives fast enough ──
+        // ── 3-second delayed filler: won't fire if response arrives fast enough ──
         const fillerTimer = setTimeout(() => {
             if (!mainResolved.done) {
                 playThinkingFiller(text, mainResolved).catch(() => { });
             }
-        }, 1000);
+        }, 3000);
 
         // Ensure sync is complete before proceeding
         if (syncPromiseRef.current) {
