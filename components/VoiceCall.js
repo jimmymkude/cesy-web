@@ -27,6 +27,107 @@ export default function VoiceCall({ onClose }) {
     const dbUserIdRef = useRef(null);
     const workoutRef = useRef(null);
     const syncPromiseRef = useRef(null);
+    const lastFillerRef = useRef(null);    // track last used filler for no-repeat
+    const thinkingAbortRef = useRef(null); // cancel chained fillers when response arrives
+
+    // ── Thinking filler phrases ────────────────────────────────────────
+    // Split by context: questions lean to 'question', statements to 'statement'
+    const FILLERS = {
+        question: [
+            'Hmm, let me think...',
+            'Oh, good question...',
+            'Uhh, let me see...',
+            'Hmm... yeah...',
+            'Ah, interesting...',
+            'Let me think about that...',
+        ],
+        statement: [
+            'Ah, got it...',
+            'Hmm, okay...',
+            'Uhh, sure...',
+            'Mmm, got it...',
+            'Right, okay...',
+            'Ah... yeah...',
+        ],
+        chain: [
+            'Yeah...',
+            'Hmm...',
+            'Okay...',
+            'Uhh...',
+            'Mhm...',
+            'Ah...',
+        ],
+    };
+
+    const pickFiller = (pool) => {
+        const available = pool.filter((p) => p !== lastFillerRef.current);
+        const chosen = available[Math.floor(Math.random() * available.length)];
+        lastFillerRef.current = chosen;
+        return chosen;
+    };
+
+    const getFillerPool = (text) => {
+        const questionWords = ['what', 'how', 'why', 'when', 'where', 'who', 'which', 'could', 'would', 'can', 'is', 'are', 'do', 'does'];
+        const lower = text.toLowerCase();
+        const isQuestion = text.includes('?') || questionWords.some((w) => lower.startsWith(w));
+        return isQuestion ? FILLERS.question : FILLERS.statement;
+    };
+
+    // Play a thinking filler via ElevenLabs, then optionally chain another
+    const playThinkingFiller = useCallback(async (transcript, mainResolved) => {
+        const voiceId = localStorage.getItem(STORAGE_KEYS.selectedVoiceId) || VOICE.defaultVoiceId;
+        const phrase = pickFiller(getFillerPool(transcript));
+        const abortController = { cancelled: false };
+        thinkingAbortRef.current = abortController;
+
+        try {
+            const res = await fetch('/api/elevenlabs/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voiceId, text: phrase }),
+            });
+            if (!res.ok || abortController.cancelled) return;
+
+            const blob = await res.blob();
+            if (abortController.cancelled) return;
+
+            const url = URL.createObjectURL(blob);
+            const audio = audioRef.current || new Audio();
+            audio.src = url;
+            audioRef.current = audio;
+
+            await new Promise((resolve) => {
+                audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+                audio.onerror = () => { resolve(); };
+                audio.play().catch(resolve);
+            });
+
+            // If response hasn't arrived yet, chain another shorter filler
+            if (!abortController.cancelled && !mainResolved.done) {
+                await new Promise((r) => setTimeout(r, 250)); // brief natural pause
+                if (!abortController.cancelled && !mainResolved.done) {
+                    const chainPhrase = pickFiller(FILLERS.chain);
+                    const chainRes = await fetch('/api/elevenlabs/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ voiceId, text: chainPhrase }),
+                    });
+                    if (!chainRes.ok || abortController.cancelled) return;
+                    const chainBlob = await chainRes.blob();
+                    if (abortController.cancelled) return;
+                    const chainUrl = URL.createObjectURL(chainBlob);
+                    const chainAudio = audioRef.current || new Audio();
+                    chainAudio.src = chainUrl;
+                    audioRef.current = chainAudio;
+                    await new Promise((resolve) => {
+                        chainAudio.onended = () => { URL.revokeObjectURL(chainUrl); resolve(); };
+                        chainAudio.onerror = () => { resolve(); };
+                        chainAudio.play().catch(resolve);
+                    });
+                }
+            }
+        } catch { /* ignore filler errors */ }
+    }, []);
 
     useEffect(() => {
         setIsSupported(
@@ -164,6 +265,12 @@ export default function VoiceCall({ onClose }) {
 
         setCallState('thinking');
 
+        // Shared flag so the filler can know when the main response has resolved
+        const mainResolved = { done: false };
+
+        // Fire thinking filler in parallel — don't await it
+        playThinkingFiller(text, mainResolved).catch(() => { });
+
         // Ensure sync is complete before proceeding
         if (syncPromiseRef.current) {
             await syncPromiseRef.current;
@@ -210,10 +317,17 @@ You have access to tools for managing workouts (manage_workout), setting reminde
             }
 
             if (data.message) {
+                // Signal to filler chain that response has arrived
+                mainResolved.done = true;
+                if (thinkingAbortRef.current) thinkingAbortRef.current.cancelled = true;
+
+                // Small pause to let any in-flight filler audio finish cleanly
+                if (audioRef.current && !audioRef.current.paused) {
+                    audioRef.current.pause();
+                }
+
                 // Add assistant response to voice history
                 voiceHistoryRef.current.push({ role: 'assistant', content: data.message });
-
-
                 speakResponse(data.message);
             } else {
                 setCallState('idle');
