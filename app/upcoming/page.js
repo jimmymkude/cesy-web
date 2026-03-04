@@ -10,8 +10,11 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const formatEventDate = (dateStr) => {
     const date = new Date(dateStr);
     const now = new Date();
-    const diffMs = date.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    // Strip time for calendar-day comparison
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const eventMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.round((eventMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
 
     const dateFormatted = date.toLocaleDateString('en-US', {
         weekday: 'long', month: 'short', day: 'numeric',
@@ -28,7 +31,8 @@ const formatEventDate = (dateStr) => {
     else if (diffDays <= 7) relative = `In ${diffDays} days`;
     else relative = null;
 
-    return { dateFormatted, timeFormatted, relative, isPast: diffDays < 0, isToday: diffDays === 0 };
+    // isPast: the actual datetime has passed (not just the date)
+    return { dateFormatted, timeFormatted, relative, isPast: date < now, isToday: diffDays === 0 };
 };
 
 const getNextWorkout = (schedule) => {
