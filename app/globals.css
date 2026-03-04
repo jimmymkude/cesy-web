@@ -1492,7 +1492,7 @@ a:hover {
    FLIP CARD
    ========================================= */
 .flip-card {
-  perspective: 1200px;
+  perspective: 1500px;
   cursor: pointer;
 }
 
@@ -1502,7 +1502,7 @@ a:hover {
   height: 100%;
   min-height: 120px;
   transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.45, 0, 0.15, 1);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .flip-card.flipped .flip-card-inner {
@@ -1519,7 +1519,16 @@ a:hover {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.flip-card-front::-webkit-scrollbar,
+.flip-card-back::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari, Edge */
 }
 
 .flip-card-front {

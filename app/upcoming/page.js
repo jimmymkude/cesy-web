@@ -160,11 +160,15 @@ export default function UpcomingPage() {
                                 )}
                             </div>
                             <button
-                                className="memory-delete-btn"
+                                className="memory-delete"
                                 onClick={(e) => { e.stopPropagation(); handleDelete(event.id); }}
                                 disabled={deletingId === event.id}
                             >
-                                <Trash2 size={14} />
+                                {deletingId === event.id ? (
+                                    <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                                ) : (
+                                    <Trash2 size={14} />
+                                )}
                             </button>
                         </div>
                     </div>

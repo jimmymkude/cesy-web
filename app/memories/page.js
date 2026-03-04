@@ -21,9 +21,7 @@ export default function MemoriesPage() {
     const [error, setError] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
     const [dbUserId, setDbUserId] = useState(null);
-    // Flip state per card: undefined | 'loading' | 'done'
     const [flipState, setFlipState] = useState({});
-    // Related memories cache keyed by memory id
     const [relatedCache, setRelatedCache] = useState({});
 
     useEffect(() => {
@@ -82,7 +80,6 @@ export default function MemoriesPage() {
             setFlipState((prev) => ({ ...prev, [id]: undefined }));
             return;
         }
-        // Lazy fetch related memories on first flip
         if (!relatedCache[id]) {
             setFlipState((prev) => ({ ...prev, [id]: 'loading' }));
             try {
@@ -105,10 +102,16 @@ export default function MemoriesPage() {
     return (
         <AppShell>
             <div className="memories-page">
-                <div className="memories-header">
-                    <h1 className="memories-title">Memories</h1>
-                    <p className="memories-subtitle">What Cesy remembers about you</p>
+                <div className="memories-header" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Brain size={24} color="var(--color-accent)" strokeWidth={2} />
+                    <h2 className="memories-title" style={{ margin: 0 }}>Memories</h2>
+                    <span className="memories-count" style={{ margin: 0, marginTop: '2px' }}>
+                        {memories.length} item{memories.length !== 1 ? 's' : ''}
+                    </span>
                 </div>
+                <p className="memories-subtitle" style={{ marginBottom: 'var(--space-6)' }}>
+                    What Cesy remembers about you · tap cards to explore
+                </p>
 
                 {error && (
                     <div className="memories-error">
@@ -126,60 +129,55 @@ export default function MemoriesPage() {
                     </div>
                 ) : memories.length === 0 ? (
                     <div className="memories-empty">
-                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
-                            <Brain size={48} strokeWidth={1.5} style={{ opacity: 0.4 }} />
-                        </div>
-                        <p className="memories-empty-title">No memories yet</p>
-                        <p className="memories-empty-desc">
-                            Chat with Cesy and she&apos;ll remember important things about you — your preferences, goals, and more.
+                        <Brain size={48} color="var(--color-accent)" strokeWidth={1} style={{ opacity: 0.3 }} />
+                        <p>No memories yet</p>
+                        <p style={{ opacity: 0.6, fontSize: '0.8rem', textAlign: 'center', maxWidth: '300px' }}>
+                            Chat with Cesy and she&apos;ll remember important things about you.
                         </p>
                     </div>
                 ) : (
-                    <div className="memories-list">
-                        <div className="memories-count">
-                            {memories.length} {memories.length === 1 ? 'memory' : 'memories'} · tap to explore
-                        </div>
+                    <div className="memory-grid">
                         {memories.map((memory) => {
                             const state = flipState[memory.id];
                             const isFlipped = state === 'loading' || state === 'done';
                             const related = relatedCache[memory.id];
                             const chatUrl = `/?q=${encodeURIComponent(`Tell me more about: ${memory.content}`)}`;
+                            const isEvent = memory.tags?.includes('event');
 
                             return (
                                 <div
                                     key={memory.id}
                                     className={`flip-card${isFlipped ? ' flipped' : ''}`}
                                     onClick={() => handleFlip(memory)}
-                                    style={{ minHeight: '120px' }}
+                                    style={{ minHeight: '100px' }}
                                 >
                                     <div className="flip-card-inner">
                                         {/* FRONT */}
                                         <div className="flip-card-front">
                                             <div className="memory-card" style={{ height: '100%', boxSizing: 'border-box' }}>
-                                                <div className="memory-content">
-                                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: 'var(--space-3)' }}>
-                                                        <Terminal size={18} color="var(--color-accent)" style={{ marginTop: '4px', flexShrink: 0, opacity: 0.8 }} />
-                                                        <p className="memory-text" style={{ margin: 0 }}>{memory.content}</p>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: isEvent ? 'var(--color-accent)' : undefined, marginBottom: '6px' }}>
+                                                        <Terminal size={14} />
+                                                        <span>Observation</span>
+                                                        <span style={{ opacity: 0.5 }}>• {formatDate(memory.createdAt)}</span>
                                                     </div>
-                                                    <div className="memory-meta">
-                                                        <span className="memory-date">{formatDate(memory.createdAt)}</span>
-                                                        {memory.tags && memory.tags.length > 0 && (
-                                                            <div className="memory-tags">
-                                                                {memory.tags.map((tag, i) => {
-                                                                    const tagColor = getTagColor(tag);
-                                                                    return (
-                                                                        <span
-                                                                            key={i}
-                                                                            className="memory-tag"
-                                                                            style={{ color: tagColor, borderColor: tagColor, boxShadow: `inset 0 0 10px ${tagColor}30` }}
-                                                                        >
-                                                                            {tag}
-                                                                        </span>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    <p className="memory-content">{memory.content}</p>
+                                                    {memory.tags && memory.tags.length > 0 && (
+                                                        <div className="memory-tags" style={{ marginTop: '8px' }}>
+                                                            {memory.tags.map((tag, i) => {
+                                                                const tagColor = getTagColor(tag);
+                                                                return (
+                                                                    <span
+                                                                        key={i}
+                                                                        className="memory-tag"
+                                                                        style={{ color: tagColor, borderColor: tagColor, boxShadow: `inset 0 0 10px ${tagColor}30` }}
+                                                                    >
+                                                                        {tag}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <button
                                                     className="memory-delete"
@@ -190,7 +188,7 @@ export default function MemoriesPage() {
                                                     {deletingId === memory.id ? (
                                                         <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
                                                     ) : (
-                                                        <Trash2 size={16} strokeWidth={2} />
+                                                        <Trash2 size={14} />
                                                     )}
                                                 </button>
                                             </div>
@@ -198,7 +196,7 @@ export default function MemoriesPage() {
 
                                         {/* BACK */}
                                         <div className="flip-card-back">
-                                            <span className="flip-card-back-label">Related</span>
+                                            <span className="flip-card-back-label">Related Context</span>
                                             {state === 'loading' ? (
                                                 <div className="flip-card-empty">
                                                     <div className="spinner" style={{ width: 16, height: 16 }} />
@@ -210,14 +208,14 @@ export default function MemoriesPage() {
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <div className="flip-card-empty">Nothing related yet — keep chatting</div>
+                                                <div className="flip-card-empty">Nothing connected yet.</div>
                                             )}
-                                            <div className="flip-card-back-row">
+                                            <div className="flip-card-back-row" style={{ marginTop: 'auto', paddingTop: '8px' }}>
                                                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                                                     {formatDate(memory.createdAt)}
                                                 </span>
                                                 <a href={chatUrl} className="flip-chat-btn" onClick={(e) => e.stopPropagation()}>
-                                                    <MessageSquare size={12} /> Chat
+                                                    <MessageSquare size={14} /> Chat
                                                 </a>
                                             </div>
                                         </div>
