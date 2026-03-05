@@ -141,7 +141,7 @@ export default function MemoriesPage() {
                             const state = flipState[memory.id];
                             const isFlipped = state === 'loading' || state === 'done';
                             const related = relatedCache[memory.id];
-                            const chatUrl = `/?q=${encodeURIComponent(`Tell me more about: ${memory.content}`)}`;
+                            const chatUrl = `/?context=${encodeURIComponent(`Tell me more about: ${memory.content}`)}`;
                             const isEvent = memory.tags?.includes('event');
 
                             return (

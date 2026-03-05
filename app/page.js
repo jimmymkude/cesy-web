@@ -24,13 +24,14 @@ function ChatArea() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Auto-send from ?q= query param (e.g. "Chat about this" links)
+  // Auto-send from ?q= or ?context= query param
   useEffect(() => {
     const q = searchParams.get('q');
-    if (q && !sentQueryRef.current && !isLoading) {
+    const ctx = searchParams.get('context');
+    const prompt = q || ctx;
+    if (prompt && !sentQueryRef.current && !isLoading) {
       sentQueryRef.current = true;
-      sendMessage(q);
-      // Clean up the URL without a full navigation
+      sendMessage(prompt, { hidden: !!ctx });
       router.replace('/', { scroll: false });
     }
   }, [searchParams, isLoading, sendMessage, router]);

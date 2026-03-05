@@ -99,7 +99,7 @@ export function ChatProvider({ children }) {
         return prompt;
     }, [user]);
 
-    const sendMessage = useCallback(async (text) => {
+    const sendMessage = useCallback(async (text, { hidden = false } = {}) => {
         if (!text.trim() || isLoading || !user) return;
 
         setError(null);
@@ -111,14 +111,18 @@ export function ChatProvider({ children }) {
             requestNotificationPermission();
         }
 
-        // Add user message to UI immediately
+        // Add user message to UI (unless hidden)
         const userMsg = { id: Date.now().toString(), role: 'user', content: text, createdAt: Date.now() };
-        const updatedMessages = [...messages, userMsg];
-        setMessages(updatedMessages);
+        const updatedMessages = hidden ? [...messages] : [...messages, userMsg];
+        if (!hidden) setMessages(updatedMessages);
         setIsLoading(true);
 
         try {
-            const apiMessages = updatedMessages.map((m) => ({
+            // Always include the message in API call even if hidden from UI
+            const allMessages = hidden
+                ? [...updatedMessages, userMsg]
+                : updatedMessages;
+            const apiMessages = allMessages.map((m) => ({
                 role: m.role,
                 content: m.content,
             }));
