@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { generateEmbedding, toVectorLiteral } from '@/lib/tools';
 
 // POST /api/memories — Add a memory
 // GET /api/memories?userId=xxx — Get recent memories
@@ -54,15 +55,31 @@ export async function GET(request) {
                 take: limit,
             });
         } else if (query) {
-            // Keyword search
-            memories = await prisma.memory.findMany({
-                where: {
+            // Semantic search via pgvector (find related memories by meaning)
+            const embedding = await generateEmbedding(query);
+            if (embedding) {
+                const vectorStr = toVectorLiteral(embedding);
+                memories = await prisma.$queryRawUnsafe(
+                    `SELECT id, content, tags, created_at as "createdAt", event_date as "eventDate"
+                     FROM memories
+                     WHERE user_id = $1 AND embedding IS NOT NULL
+                     ORDER BY embedding <=> $2::vector
+                     LIMIT $3`,
                     userId,
-                    content: { contains: query, mode: 'insensitive' },
-                },
-                orderBy: { createdAt: 'desc' },
-                take: limit,
-            });
+                    vectorStr,
+                    limit
+                );
+            } else {
+                // Fallback: keyword search when embeddings unavailable
+                memories = await prisma.memory.findMany({
+                    where: {
+                        userId,
+                        content: { contains: query, mode: 'insensitive' },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    take: limit,
+                });
+            }
         } else {
             // Recent memories
             memories = await prisma.memory.findMany({
