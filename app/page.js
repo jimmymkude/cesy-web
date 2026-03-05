@@ -79,18 +79,20 @@ function ChatArea() {
               <div className="message-bubble">
                 {msg.content}
                 {msg.amazonCarts?.length > 0 && (
-                  <div style={{ marginTop: '12px' }}>
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {msg.amazonCarts.map((cart, ci) => (
-                      <a
-                        key={ci}
-                        href={cart.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="amazon-cart-btn"
-                      >
-                        <ShoppingCart size={16} />
-                        <span>Add {cart.items.length} item{cart.items.length > 1 ? 's' : ''} to Amazon Cart</span>
-                      </a>
+                      cart.items.map((item, ii) => (
+                        <a
+                          key={`${ci}-${ii}`}
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="amazon-cart-btn"
+                        >
+                          <ShoppingCart size={16} />
+                          <span>{item.name}</span>
+                        </a>
+                      ))
                     ))}
                   </div>
                 )}
