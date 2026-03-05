@@ -84,13 +84,13 @@ function ChatArea() {
                       cart.items.map((item, ii) => (
                         <a
                           key={`${ci}-${ii}`}
-                          href={item.productUrl || item.searchUrl}
+                          href={item.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="amazon-cart-btn"
                         >
                           <ShoppingCart size={16} />
-                          <span>{item.name}</span>
+                          <span>{item.asin ? `Add to Cart: ${item.name}` : `Find: ${item.name}`}</span>
                         </a>
                       ))
                     ))}
