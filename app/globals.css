@@ -684,6 +684,40 @@ a:hover {
   background: linear-gradient(135deg, #ffad33, #ffc266);
 }
 
+.message-user .message-bubble {
+  position: relative;
+}
+
+.retry-btn {
+  position: absolute;
+  bottom: -2px;
+  left: -28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+}
+
+.message-user:hover .retry-btn {
+  opacity: 0.6;
+}
+
+.retry-btn:hover {
+  opacity: 1 !important;
+  color: var(--color-primary);
+}
+
+.retry-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.2 !important;
+}
+
 .chat-input-area {
   padding: var(--space-4) 0 var(--space-6);
   position: sticky;

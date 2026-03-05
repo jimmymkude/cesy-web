@@ -44,7 +44,7 @@ const originalFetch = global.fetch;
 
 describe('TOOLS definitions', () => {
     it('exports 13 tool definitions', () => {
-        expect(TOOLS).toHaveLength(14);
+        expect(TOOLS).toHaveLength(15);
     });
 
     it('all tools have required schema fields', () => {

@@ -7,11 +7,11 @@ import { useChat } from '@/contexts/ChatContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import VoiceCall from '@/components/VoiceCall';
-import { MessageSquare, Mic, Trash2, Send, ShoppingCart } from 'lucide-react';
+import { MessageSquare, Mic, Trash2, Send, ShoppingCart, RefreshCw } from 'lucide-react';
 
 function ChatArea() {
   const { user } = useAuth();
-  const { messages, isLoading, error, sendMessage, clearChat } = useChat();
+  const { messages, isLoading, error, sendMessage, retryMessage, clearChat } = useChat();
   const [input, setInput] = useState('');
   const [showVoiceCall, setShowVoiceCall] = useState(false);
   const messagesEndRef = useRef(null);
@@ -79,6 +79,16 @@ function ChatArea() {
               </div>
               <div className="message-bubble">
                 {msg.content}
+                {msg.role === 'user' && (
+                  <button
+                    className="retry-btn"
+                    onClick={() => retryMessage(msg.id)}
+                    disabled={isLoading}
+                    title="Retry this message"
+                  >
+                    <RefreshCw size={13} />
+                  </button>
+                )}
                 {msg.amazonCarts?.length > 0 && (
                   <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {msg.amazonCarts.map((cart, ci) => (

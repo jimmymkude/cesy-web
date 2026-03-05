@@ -169,6 +169,18 @@ export function ChatProvider({ children }) {
         }
     }, [messages, isLoading, user, ensureUserData, buildSystemPrompt]);
 
+    const retryMessage = useCallback((messageId) => {
+        // Find the user message to retry
+        const idx = messages.findIndex((m) => m.id === messageId);
+        if (idx === -1) return;
+
+        const userMsg = messages[idx];
+        // Remove this message and everything after it (including the failed assistant response)
+        setMessages(messages.slice(0, idx));
+        // Re-send after state update
+        setTimeout(() => sendMessage(userMsg.content), 50);
+    }, [messages, sendMessage]);
+
     const clearChat = useCallback(() => {
         setMessages([]);
         setError(null);
@@ -181,6 +193,7 @@ export function ChatProvider({ children }) {
                 isLoading,
                 error,
                 sendMessage,
+                retryMessage,
                 clearChat,
             }}
         >
