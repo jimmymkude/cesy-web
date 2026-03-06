@@ -183,6 +183,6 @@ describe('ChatContext', () => {
         const chatCall = global.fetch.mock.calls.find(([url]) => url === '/api/chat');
         expect(chatCall).toBeDefined();
         const body = JSON.parse(chatCall[1].body);
-        expect(body.systemPrompt).toContain('Current date and time');
+        expect(body.systemPrompt).toContain('CURRENT TIME');
     });
 });

@@ -69,8 +69,10 @@ export function ChatProvider({ children }) {
     const buildSystemPrompt = useCallback(() => {
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\nCurrent date and time: ${dateStr}, ${timeStr}.\nWhen the user says "today", "tomorrow", "this Friday", etc., resolve these to actual calendar dates using the current date above.`;
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+        const isoStr = now.toISOString();
+        const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        let prompt = `Your name is Cesy. ${ASSISTANT.instructions}\n\n⏰ CURRENT TIME (ground truth — ALWAYS use this for any time/date reasoning):\n- Local: ${dateStr}, ${timeStr}\n- Timezone: ${tzName}\n- ISO: ${isoStr}\nNEVER guess the current date or time. ALWAYS use the timestamp above. When the user says "today", "tomorrow", "tonight", "this Friday", etc., calculate based on the date above.`;
 
         // Tool instructions
         prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), cancelling reminders (cancel_reminder), checking their calendar (get_calendar), sending notifications via Telegram (send_notification), and more. Use the appropriate tool for each request. When setting reminders, always craft a short, personalized deliveryMessage in your voice that will be sent via Telegram when the reminder fires — make it feel like YOU are personally nudging the user. Notifications and reminders are delivered via Telegram. You can search memories to check past reminder deliveries. When creating or updating workout schedule entries, always include a short motivational "note" field per day (e.g. "Upper body focus today — push for a new PR on bench") — this appears on the user's workout card as your personal tip.`;
