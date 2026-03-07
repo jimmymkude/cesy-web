@@ -77,8 +77,13 @@ export function ChatProvider({ children }) {
         // Tool instructions
         prompt += `\n\nYou have access to tools for managing the user's workout schedule (manage_workout), setting reminders (set_reminder), cancelling reminders (cancel_reminder), updating reminders (update_reminder), checking their calendar (get_calendar), sending notifications via Telegram (send_notification), and more. Use the appropriate tool for each request. When setting reminders, always craft a short, personalized deliveryMessage in your voice that will be sent via Telegram when the reminder fires — make it feel like YOU are personally nudging the user. Notifications and reminders are delivered via Telegram. You can search memories to check past reminder deliveries. When creating or updating workout schedule entries, always include a short motivational "note" field per day (e.g. "Upper body focus today — push for a new PR on bench") — this appears on the user's workout card as your personal tip.`;
 
-        // MANDATORY web search for real-time facts
-        prompt += `\n\n🔍 MANDATORY: You MUST use web_search for ANY question about real-time or current facts. This includes: sports schedules/scores/results, news, prices, release dates, event times, or anything that changes over time. Your training data is STALE. Memories about events are NOT a replacement for web search — memories tell you what the user cares about, NOT current schedules. Even if you find a memory about a team or event, you MUST STILL web_search for current information. After finding event times from web search, use the is_time_past tool to verify whether the event is still upcoming before telling the user.`;
+        // MANDATORY web search + timezone conversion workflow
+        prompt += `\n\n🔍 MANDATORY WORKFLOW for time-sensitive questions (sports, events, schedules, etc.):
+1. ALWAYS call web_search first — your training data is stale. Memories tell you what the user CARES about, not current schedules.
+2. Convert ALL times from search results to the user's local timezone (${tzName}) before responding. NEVER present times in other timezones unless the user explicitly asks. For example, if a search result says "8pm GMT", convert it to the user's local time.
+3. Call is_time_past with the event time to verify if it's already happened or is upcoming.
+4. Present the answer in the user's timezone ONLY. Say the time in ${tzName} first, and optionally mention the original timezone in parentheses.
+Get it right on the FIRST response — don't make the user correct you.`;
 
         // Memory saving — be generous
         prompt += `\n\nSave memories generously. Anything that helps you know the user better is worth saving: preferences, habits, opinions, small personal details, goals, moods, routines, relationships, interests. You don't need to search before saving — the system handles deduplication automatically. The more you remember, the more useful and personal you become. Think of yourself as a personal assistant who never forgets what someone told you.`;
