@@ -80,9 +80,9 @@ export function ChatProvider({ children }) {
         // MANDATORY web search + timezone conversion workflow
         prompt += `\n\n🔍 MANDATORY WORKFLOW for time-sensitive questions (sports, events, schedules, etc.):
 1. ALWAYS call web_search first — your training data is stale. Memories tell you what the user CARES about, not current schedules.
-2. Convert ALL times from search results to the user's local timezone (${tzName}) before responding. NEVER present times in other timezones unless the user explicitly asks. For example, if a search result says "8pm GMT", convert it to the user's local time.
-3. Call is_time_past with the event time to verify if it's already happened or is upcoming.
-4. Present the answer in the user's timezone ONLY. Say the time in ${tzName} first, and optionally mention the original timezone in parentheses.
+2. NEVER manually convert timezones (e.g. "subtract 8 hours") — you WILL get daylight saving wrong. Instead, call is_time_past with the event time as an ISO 8601 string with its original timezone offset (e.g. "2026-03-15T16:30:00+00:00" for 4:30 PM GMT). The tool handles DST automatically and returns the correct local time in the user's timezone.
+3. Use the local time returned by is_time_past in your response. Present in the user's timezone (${tzName}) ONLY.
+4. If is_time_past says ALREADY PASSED, tell the user it already happened.
 Get it right on the FIRST response — don't make the user correct you.`;
 
         // Memory saving — be generous
