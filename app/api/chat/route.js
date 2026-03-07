@@ -67,8 +67,8 @@ export async function POST(request) {
             }
 
             // Debug: log stop reason and content types
-            console.log(`[Chat] iteration=${iterations} stop_reason=${data.stop_reason} content_types=${data.content?.map(b => b.type).join(',')}`);
-
+            const toolNames = data.content?.filter(b => b.type === 'tool_use').map(b => b.name).join(',') || 'none';
+            console.log(`[Chat] iteration=${iterations} stop_reason=${data.stop_reason} tools=${toolNames}`);
 
             // Check if Claude wants to use tools
             if (data.stop_reason === 'tool_use') {
