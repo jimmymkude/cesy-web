@@ -49,7 +49,7 @@ export async function POST(request) {
                 },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-20250514',
-                    max_tokens: 4096,
+                    max_tokens: 8192,
                     system: systemPrompt || '',
                     messages: currentMessages,
                     tools: TOOLS,
@@ -65,6 +65,10 @@ export async function POST(request) {
                     { status: res.status }
                 );
             }
+
+            // Debug: log stop reason and content types
+            console.log(`[Chat] iteration=${iterations} stop_reason=${data.stop_reason} content_types=${data.content?.map(b => b.type).join(',')}`);
+
 
             // Check if Claude wants to use tools
             if (data.stop_reason === 'tool_use') {
@@ -130,7 +134,13 @@ export async function POST(request) {
             finalResponse.content
                 ?.filter((b) => b.type === 'text')
                 .map((b) => b.text)
-                .join('') || 'No response received.';
+                .join('') ||
+            // Fallback: extract text from intermediate tool iterations
+            currentMessages
+                .filter(m => m.role === 'assistant')
+                .flatMap(m => Array.isArray(m.content) ? m.content.filter(b => b.type === 'text').map(b => b.text) : [])
+                .pop() ||
+            'No response received.';
 
         const response = {
             message: responseText,
