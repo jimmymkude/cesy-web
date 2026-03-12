@@ -4,26 +4,122 @@ import { TOOLS, executeTool } from '@/lib/tools';
 
 const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
 
-// Tools that Cesy can use in group chat
-const GROUP_TOOLS = ['search_memories', 'web_search', 'get_current_time', 'calculate'];
+// ─── Group Tool Access Control ──────────────────────────────────────
+
+// Tools that are NOT user-scoped (safe for anyone)
+const GLOBAL_TOOLS = ['web_search', 'get_weather', 'get_current_time', 'is_time_past', 'run_calculation'];
+
+// Tools allowed for OTHER users (cross-user)
+const CROSS_USER_ALLOWED = ['search_memories', 'set_reminder', 'get_calendar'];
+
+// Tools that require sharePrivateMemories to be enabled on the target
+const REQUIRES_MEMORY_SHARING = ['search_memories'];
+
+// Tools ONLY allowed for the speaker (self-only in group)
+const SELF_ONLY_TOOLS = [
+    'save_memory', 'update_memory', 'delete_memory',
+    'cancel_reminder', 'update_reminder',
+    'manage_workout', 'set_timer', 'send_notification',
+    'mark_workout_complete', 'amazon_cart',
+];
+
+// All tools available in group chat (global + cross-user + self-only)
+const GROUP_TOOL_NAMES = [...GLOBAL_TOOLS, ...CROSS_USER_ALLOWED, ...SELF_ONLY_TOOLS];
+
+/**
+ * Build group-specific tool definitions.
+ * Adds targetUserId to cross-user tools so Cesy can specify which member to act on.
+ */
+function buildGroupToolDefinitions() {
+    const baseDefs = TOOLS.filter((t) => GROUP_TOOL_NAMES.includes(t.name));
+
+    return baseDefs.map((tool) => {
+        if (CROSS_USER_ALLOWED.includes(tool.name)) {
+            // Clone and add targetUserId property
+            return {
+                ...tool,
+                input_schema: {
+                    ...tool.input_schema,
+                    properties: {
+                        ...tool.input_schema.properties,
+                        targetUserId: {
+                            type: 'string',
+                            description:
+                                'The userId of the group member to perform this action for. If omitted, defaults to the person who sent the message. Use this when another member asks for help.',
+                        },
+                    },
+                },
+            };
+        }
+        return tool;
+    });
+}
+
+/**
+ * Execute a tool in group context with permission checks.
+ *
+ * @param {string} toolName - The tool to execute
+ * @param {object} toolInput - Tool input from Claude
+ * @param {string} senderId - The userId of the person who sent the message
+ * @param {object} groupContext - { members: [{ userId, sharePrivateMemories, user: { fullName } }] }
+ * @returns {string} Tool result or a friendly denial message
+ */
+async function executeGroupTool(toolName, toolInput, senderId, groupContext) {
+    // Extract target — Claude may specify targetUserId, otherwise it's the sender
+    const targetUserId = toolInput.targetUserId || senderId;
+    const isCrossUser = targetUserId !== senderId;
+
+    // Find the target member in the group
+    const targetMember = groupContext.members.find((m) => m.userId === targetUserId);
+    const targetName = targetMember?.user?.fullName?.split(' ')[0] || 'that user';
+
+    // ── Global tools: always allowed, no userId needed ──
+    if (GLOBAL_TOOLS.includes(toolName)) {
+        return executeTool(toolName, toolInput, senderId);
+    }
+
+    // ── Self-only tools: block cross-user usage ──
+    if (SELF_ONLY_TOOLS.includes(toolName) && isCrossUser) {
+        return `I can't ${toolName.replace(/_/g, ' ')} for ${targetName} — that's a personal action only they can do in their own chat with me. Maybe give them a nudge to do it themselves! 😉`;
+    }
+
+    // ── Cross-user tools: check permissions ──
+    if (isCrossUser && CROSS_USER_ALLOWED.includes(toolName)) {
+        // Check if target is actually in the group
+        if (!targetMember) {
+            return `I don't see a member with that ID in this group. Double-check the userId!`;
+        }
+
+        // Check memory sharing requirement
+        if (REQUIRES_MEMORY_SHARING.includes(toolName) && !targetMember.sharePrivateMemories) {
+            return `${targetName} hasn't enabled memory sharing for this group, so I can't access their memories. They can turn it on in the Members tab if they want to share! 🔒`;
+        }
+    }
+
+    // Strip targetUserId before passing to executeTool (it doesn't know about it)
+    const { targetUserId: _removed, ...cleanInput } = toolInput;
+    return executeTool(toolName, cleanInput, targetUserId);
+}
+
+// ─── Cesy Response Logic ────────────────────────────────────────────
 
 /**
  * Check if Cesy should respond to a group message.
- * She responds when directly addressed or when asked a fitness/workout question.
  */
 function shouldCesyRespond(content) {
     const lower = content.toLowerCase();
-    // Direct address
     if (/\b(cesy|@cesy|hey cesy|yo cesy)\b/i.test(lower)) return true;
-    // Fitness questions (workout, exercise, etc.)
     if (/\b(workout|exercise|training|stretch|warm.?up|protein|calories|sets|reps|routine)\b/.test(lower)) return true;
     return false;
 }
 
 /**
  * Build Cesy's system prompt for group chat context.
+ * Includes userId mappings so Cesy can target specific members with tools.
  */
 async function buildGroupSystemPrompt(group, senderId) {
+    const senderMember = group.members.find((m) => m.userId === senderId);
+
     const memberList = group.members.map((m) => {
         const name = m.user.fullName || m.user.username || 'Unknown';
         const schedule = m.user.workoutSchedule?.schedule;
@@ -31,18 +127,16 @@ async function buildGroupSystemPrompt(group, senderId) {
         if (schedule && Array.isArray(schedule)) {
             scheduleStr = schedule.map((s) => `${s.dayOfWeek}: ${s.workoutType}`).join(', ');
         }
-        return `- ${name} (@${m.user.username}): Schedule: ${scheduleStr}`;
+        const sharingStatus = m.sharePrivateMemories ? '(memories shared ✓)' : '(memories private)';
+        const isSpeaker = m.userId === senderId ? ' ← SPEAKING NOW' : '';
+        return `- ${name} (@${m.user.username}) [userId: ${m.userId}] ${sharingStatus}${isSpeaker}\n  Schedule: ${scheduleStr}`;
     }).join('\n');
 
-    // Check if sender has sharePrivateMemories enabled
-    const senderMember = group.members.find((m) => m.userId === senderId);
-    const canAccessPrivateMemories = senderMember?.sharePrivateMemories === true;
-
     let memoriesNote = '';
-    if (canAccessPrivateMemories && senderId) {
-        memoriesNote = `\nThe user speaking (${senderMember.user.fullName}) has shared their private memories with this group. You can use search_memories with their userId to access them when relevant.`;
+    if (senderMember?.sharePrivateMemories) {
+        memoriesNote = `\nThe speaker (${senderMember.user.fullName}) has shared their private memories with this group.`;
     } else if (senderId) {
-        memoriesNote = `\nThe user speaking has NOT shared their private memories with this group. If they ask you to recall personal memories, let them know they can enable memory sharing in group settings.`;
+        memoriesNote = `\nThe speaker has NOT shared their private memories. If they ask about personal memories, suggest enabling sharing in the Members tab.`;
     }
 
     // Fetch group memories
@@ -59,31 +153,32 @@ async function buildGroupSystemPrompt(group, senderId) {
 You have the same warm, witty personality as always, but you're in a group setting.
 You can see everyone's workout schedules and help keep the group accountable.
 
-Group Members:
+Group Members (with userIds for tool targeting):
 ${memberList}
 
 Group Memories:
 ${memoriesStr}
 ${memoriesNote}
 
+How to use tools for specific members:
+- To act on behalf of a specific member, set "targetUserId" in the tool input to their userId.
+- You can search_memories for any member who has "(memories shared ✓)" next to their name.
+- You can set_reminder and get_calendar for any member.
+- You CANNOT save/update/delete memories, cancel/update reminders, manage workouts, or mark workouts complete for other members — those are personal actions.
+- If a disallowed action is requested for another member, your tool will return a helpful message — just relay it with your usual charm.
+
 Guidelines:
 - Be yourself — warm, witty, concise. No corporate speak.
-- You don't need to respond to every message. Only respond when addressed or when fitness advice is relevant.
+- Only respond when addressed or when fitness advice is relevant.
 - Reference specific members by name when relevant.
 - Encourage friendly competition and accountability.
-- Keep responses short — this is group chat, not an essay.
-- If someone asks about their personal memories and sharing is off, politely tell them to enable it in group settings.
-
-IMPORTANT — Tool limitations:
-- You can ONLY use tools on behalf of the person who sent the message (the last [Name]: message).
-- You CANNOT set reminders, save memories, or perform actions for other group members.
-- If someone asks you to do something for another member (e.g. "remind Marcus to stretch"), suggest that Marcus ask you directly in their own chat.
-- In group chat, focus on advice, motivation, and accountability — save tool-heavy actions for 1:1 chats.`;
+- Keep responses short — this is group chat, not an essay.`;
 }
+
+// ─── Route Handlers ────────────────────────────────────────────────
 
 /**
  * GET /api/groups/[groupId]/chat?limit=50&before=cursorId
- * Fetch group chat messages (paginated).
  */
 export async function GET(request, { params }) {
     try {
@@ -168,7 +263,7 @@ export async function POST(request, { params }) {
 
                     const systemPrompt = await buildGroupSystemPrompt(group, userId);
 
-                    // Smart context: fetch messages since Cesy's last response + 5 before for continuity
+                    // Smart context: messages since Cesy's last response + 5 before
                     const lastCesyMsg = await prisma.groupMessage.findFirst({
                         where: { groupId, role: 'assistant' },
                         orderBy: { createdAt: 'desc' },
@@ -176,13 +271,11 @@ export async function POST(request, { params }) {
 
                     let recentMessages;
                     if (lastCesyMsg) {
-                        // Msgs since Cesy last spoke
                         const msgsSince = await prisma.groupMessage.findMany({
                             where: { groupId, createdAt: { gte: lastCesyMsg.createdAt } },
                             orderBy: { createdAt: 'asc' },
                             take: 30,
                         });
-                        // + 5 msgs before for conversational continuity
                         const msgsBefore = await prisma.groupMessage.findMany({
                             where: { groupId, createdAt: { lt: lastCesyMsg.createdAt } },
                             orderBy: { createdAt: 'desc' },
@@ -190,7 +283,6 @@ export async function POST(request, { params }) {
                         });
                         recentMessages = [...msgsBefore.reverse(), ...msgsSince];
                     } else {
-                        // First Cesy interaction — just use last 20
                         recentMessages = await prisma.groupMessage.findMany({
                             where: { groupId },
                             orderBy: { createdAt: 'desc' },
@@ -204,10 +296,10 @@ export async function POST(request, { params }) {
                         content: m.role === 'user' ? `[${m.userName}]: ${m.content}` : m.content,
                     }));
 
-                    // Filter tools to group-safe subset
-                    const groupTools = TOOLS.filter((t) => GROUP_TOOLS.includes(t.name));
+                    // Build group-aware tool definitions
+                    const groupTools = buildGroupToolDefinitions();
 
-                    // Call Claude
+                    // Call Claude with tool loop
                     let currentMessages = chatMessages;
                     let finalResponse = null;
                     let iterations = 0;
@@ -238,7 +330,13 @@ export async function POST(request, { params }) {
                             const toolResults = [];
                             for (const block of data.content) {
                                 if (block.type === 'tool_use') {
-                                    const result = await executeTool(block.name, block.input, userId);
+                                    // Use executeGroupTool with permission checks
+                                    const result = await executeGroupTool(
+                                        block.name,
+                                        block.input,
+                                        userId,
+                                        group
+                                    );
                                     toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result });
                                 }
                             }
@@ -270,7 +368,6 @@ export async function POST(request, { params }) {
                 }
             } catch (cesyErr) {
                 console.error('Cesy group response error:', cesyErr);
-                // Don't fail the whole request if Cesy can't respond
             }
         }
 
@@ -284,4 +381,13 @@ export async function POST(request, { params }) {
     }
 }
 
-export { shouldCesyRespond, buildGroupSystemPrompt };
+export {
+    shouldCesyRespond,
+    buildGroupSystemPrompt,
+    executeGroupTool,
+    buildGroupToolDefinitions,
+    GLOBAL_TOOLS,
+    CROSS_USER_ALLOWED,
+    SELF_ONLY_TOOLS,
+    REQUIRES_MEMORY_SHARING,
+};

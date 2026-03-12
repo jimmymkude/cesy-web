@@ -6,7 +6,10 @@ import { GET as getGroupDetail, DELETE as deleteGroup } from '@/app/api/groups/[
 import { GET as getInvites, PATCH as handleInvite } from '@/app/api/groups/invites/route';
 import { POST as inviteToGroup } from '@/app/api/groups/[groupId]/invite/route';
 import { PATCH as updateMember } from '@/app/api/groups/[groupId]/members/route';
-import { GET as getGroupChat, POST as sendGroupChat, shouldCesyRespond } from '@/app/api/groups/[groupId]/chat/route';
+import {
+    GET as getGroupChat, POST as sendGroupChat, shouldCesyRespond,
+    executeGroupTool, GLOBAL_TOOLS, CROSS_USER_ALLOWED, SELF_ONLY_TOOLS,
+} from '@/app/api/groups/[groupId]/chat/route';
 import prisma from '@/lib/prisma';
 
 jest.mock('@/lib/prisma', () => ({
@@ -32,6 +35,7 @@ jest.mock('@/lib/prisma', () => ({
         },
         groupMessage: {
             findMany: jest.fn(),
+            findFirst: jest.fn(),
             create: jest.fn(),
         },
         groupMemory: {
@@ -39,6 +43,20 @@ jest.mock('@/lib/prisma', () => ({
         },
         $transaction: jest.fn(),
     },
+}));
+
+// Mock executeTool from tools.js
+jest.mock('@/lib/tools', () => ({
+    TOOLS: [
+        { name: 'web_search', input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
+        { name: 'search_memories', input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
+        { name: 'set_reminder', input_schema: { type: 'object', properties: { content: { type: 'string' } }, required: ['content'] } },
+        { name: 'get_calendar', input_schema: { type: 'object', properties: {}, required: [] } },
+        { name: 'save_memory', input_schema: { type: 'object', properties: { content: { type: 'string' } }, required: ['content'] } },
+        { name: 'get_current_time', input_schema: { type: 'object', properties: {}, required: [] } },
+        { name: 'run_calculation', input_schema: { type: 'object', properties: { expression: { type: 'string' } }, required: ['expression'] } },
+    ],
+    executeTool: jest.fn().mockResolvedValue('tool result'),
 }));
 
 function makeRequest(url, method = 'GET', body = null) {
@@ -271,3 +289,100 @@ describe('/api/groups/[groupId]/members', () => {
         expect(data.member.sharePrivateMemories).toBe(true);
     });
 });
+
+// ─── executeGroupTool Permission Tests ──────────────────────────────
+
+const { executeTool } = require('@/lib/tools');
+
+const mockGroupContext = {
+    members: [
+        { userId: 'u1', sharePrivateMemories: false, user: { fullName: 'Jimmy Mkude' } },
+        { userId: 'u2', sharePrivateMemories: true, user: { fullName: 'Marcus Carter' } },
+        { userId: 'u3', sharePrivateMemories: false, user: { fullName: 'Sarah Lee' } },
+    ],
+};
+
+describe('executeGroupTool', () => {
+    beforeEach(() => jest.resetAllMocks());
+
+    it('allows global tools for any user', async () => {
+        executeTool.mockResolvedValue('time result');
+        const result = await executeGroupTool('get_current_time', {}, 'u1', mockGroupContext);
+        expect(result).toBe('time result');
+        expect(executeTool).toHaveBeenCalledWith('get_current_time', {}, 'u1');
+    });
+
+    it('blocks self-only tools for cross-user usage with friendly message', async () => {
+        const result = await executeGroupTool(
+            'save_memory',
+            { content: 'likes protein shakes', targetUserId: 'u2' },
+            'u1',
+            mockGroupContext
+        );
+        expect(result).toContain('Marcus');
+        expect(result).toContain('personal action');
+        expect(executeTool).not.toHaveBeenCalled();
+    });
+
+    it('blocks search_memories when target has sharing disabled', async () => {
+        const result = await executeGroupTool(
+            'search_memories',
+            { query: 'diet', targetUserId: 'u3' },
+            'u1',
+            mockGroupContext
+        );
+        expect(result).toContain('Sarah');
+        expect(result).toContain('memory sharing');
+        expect(executeTool).not.toHaveBeenCalled();
+    });
+
+    it('allows search_memories when target has sharing enabled', async () => {
+        executeTool.mockResolvedValue('- likes pre-workout smoothies');
+        const result = await executeGroupTool(
+            'search_memories',
+            { query: 'diet', targetUserId: 'u2' },
+            'u1',
+            mockGroupContext
+        );
+        expect(result).toBe('- likes pre-workout smoothies');
+        // Should call executeTool with Marcus's userId, not Jimmy's
+        expect(executeTool).toHaveBeenCalledWith('search_memories', { query: 'diet' }, 'u2');
+    });
+
+    it('allows set_reminder for other members', async () => {
+        executeTool.mockResolvedValue('Reminder set');
+        const result = await executeGroupTool(
+            'set_reminder',
+            { content: 'stretch at 6 PM', targetUserId: 'u2' },
+            'u1',
+            mockGroupContext
+        );
+        expect(result).toBe('Reminder set');
+        expect(executeTool).toHaveBeenCalledWith('set_reminder', { content: 'stretch at 6 PM' }, 'u2');
+    });
+
+    it('allows self-only tools for self-use', async () => {
+        executeTool.mockResolvedValue('Memory saved');
+        const result = await executeGroupTool(
+            'save_memory',
+            { content: 'I like running' },
+            'u1',
+            mockGroupContext
+        );
+        expect(result).toBe('Memory saved');
+        expect(executeTool).toHaveBeenCalledWith('save_memory', { content: 'I like running' }, 'u1');
+    });
+
+    it('strips targetUserId before passing to executeTool', async () => {
+        executeTool.mockResolvedValue('calendar data');
+        await executeGroupTool(
+            'get_calendar',
+            { date: '2026-03-12', targetUserId: 'u2' },
+            'u1',
+            mockGroupContext
+        );
+        // targetUserId should NOT be in the input passed to executeTool
+        expect(executeTool).toHaveBeenCalledWith('get_calendar', { date: '2026-03-12' }, 'u2');
+    });
+});
+
