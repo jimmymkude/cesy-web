@@ -34,6 +34,13 @@ jest.mock('@/lib/prisma', () => ({
         timer: {
             create: jest.fn(),
         },
+        workoutLog: {
+            upsert: jest.fn(),
+            count: jest.fn(),
+        },
+        groupMember: {
+            findMany: jest.fn(),
+        },
         $executeRawUnsafe: jest.fn(),
         $queryRawUnsafe: jest.fn(),
     },
@@ -929,6 +936,76 @@ describe('executeTool', () => {
             }, 'u1');
 
             expect(result).toContain('positive number');
+        });
+    });
+
+    // ── mark_workout_complete ────────────────────────────────
+    describe('mark_workout_complete', () => {
+        it('logs a workout and returns confirmation', async () => {
+            prisma.workoutLog.upsert.mockResolvedValue({ id: 'wl1' });
+            prisma.groupMember.findMany.mockResolvedValue([]);
+
+            const result = await executeTool('mark_workout_complete', {
+                workoutType: 'Running',
+            }, 'u1');
+
+            expect(result).toContain('✅ Workout logged: Running');
+            expect(prisma.workoutLog.upsert).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: {
+                        userId_date_workoutType: expect.objectContaining({
+                            userId: 'u1',
+                            workoutType: 'Running',
+                        }),
+                    },
+                    create: expect.objectContaining({ userId: 'u1', workoutType: 'Running' }),
+                })
+            );
+        });
+
+        it('includes duration and notes when provided', async () => {
+            prisma.workoutLog.upsert.mockResolvedValue({ id: 'wl2' });
+            prisma.groupMember.findMany.mockResolvedValue([]);
+
+            const result = await executeTool('mark_workout_complete', {
+                workoutType: 'Chest & Triceps',
+                duration: 45,
+                notes: 'Felt great today',
+            }, 'u1');
+
+            expect(result).toContain('Chest & Triceps');
+            expect(result).toContain('45 min');
+        });
+
+        it('includes group accountability context', async () => {
+            prisma.workoutLog.upsert.mockResolvedValue({ id: 'wl3' });
+            prisma.groupMember.findMany.mockResolvedValue([
+                {
+                    group: {
+                        name: 'The Squad',
+                        members: [{ userId: 'u1' }, { userId: 'u2' }, { userId: 'u3' }],
+                    },
+                },
+            ]);
+            prisma.workoutLog.count.mockResolvedValue(2); // 2 of 3 have worked out
+
+            const result = await executeTool('mark_workout_complete', {
+                workoutType: 'Running',
+            }, 'u1');
+
+            expect(result).toContain('The Squad');
+            expect(result).toContain('2/3');
+        });
+
+        it('handles upsert error gracefully', async () => {
+            prisma.workoutLog.upsert.mockRejectedValue(new Error('DB constraint'));
+
+            const result = await executeTool('mark_workout_complete', {
+                workoutType: 'Running',
+            }, 'u1');
+
+            expect(result).toContain('Error logging workout');
+            expect(result).toContain('DB constraint');
         });
     });
 

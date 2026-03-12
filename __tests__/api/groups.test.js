@@ -8,7 +8,8 @@ import { POST as inviteToGroup } from '@/app/api/groups/[groupId]/invite/route';
 import { PATCH as updateMember } from '@/app/api/groups/[groupId]/members/route';
 import {
     GET as getGroupChat, POST as sendGroupChat, shouldCesyRespond,
-    executeGroupTool, GLOBAL_TOOLS, CROSS_USER_ALLOWED, SELF_ONLY_TOOLS,
+    executeGroupTool, buildGroupToolDefinitions,
+    GLOBAL_TOOLS, CROSS_USER_ALLOWED, SELF_ONLY_TOOLS,
 } from '@/app/api/groups/[groupId]/chat/route';
 import prisma from '@/lib/prisma';
 
@@ -386,3 +387,33 @@ describe('executeGroupTool', () => {
     });
 });
 
+// ─── buildGroupToolDefinitions Tests ────────────────────────────────
+
+describe('buildGroupToolDefinitions', () => {
+    it('adds targetUserId to cross-user tools', () => {
+        const defs = buildGroupToolDefinitions();
+        for (const toolName of CROSS_USER_ALLOWED) {
+            const def = defs.find((d) => d.name === toolName);
+            if (def) {
+                expect(def.input_schema.properties.targetUserId).toBeDefined();
+                expect(def.input_schema.properties.targetUserId.type).toBe('string');
+            }
+        }
+    });
+
+    it('does NOT add targetUserId to non-cross-user tools', () => {
+        const defs = buildGroupToolDefinitions();
+        const nonCrossUser = defs.filter((d) => !CROSS_USER_ALLOWED.includes(d.name));
+        for (const def of nonCrossUser) {
+            expect(def.input_schema.properties.targetUserId).toBeUndefined();
+        }
+    });
+
+    it('only includes tools in GROUP_TOOL_NAMES', () => {
+        const defs = buildGroupToolDefinitions();
+        const allGroupToolNames = [...GLOBAL_TOOLS, ...CROSS_USER_ALLOWED, ...SELF_ONLY_TOOLS];
+        for (const def of defs) {
+            expect(allGroupToolNames).toContain(def.name);
+        }
+    });
+});
