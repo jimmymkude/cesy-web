@@ -6,7 +6,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useCallback } from 'react';
 import { VOICE, STORAGE_KEYS } from '@/lib/constants';
-import { Volume2, Smartphone, CheckCircle2, AlertTriangle, Link as LinkIcon, RefreshCw, Copy, Check, Globe } from 'lucide-react';
+import { Volume2, Smartphone, CheckCircle2, AlertTriangle, Link as LinkIcon, RefreshCw, Copy, Check, Globe, AtSign } from 'lucide-react';
 
 export default function SettingsPage() {
     const { user, loading } = useAuth();
@@ -21,6 +21,11 @@ export default function SettingsPage() {
     const [botConfigured, setBotConfigured] = useState(true);
     const [linkCopied, setLinkCopied] = useState(false);
     const [userTimezone, setUserTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const [username, setUsername] = useState('');
+    const [usernameInput, setUsernameInput] = useState('');
+    const [usernameSaving, setUsernameSaving] = useState(false);
+    const [usernameError, setUsernameError] = useState('');
+    const [usernameSuccess, setUsernameSuccess] = useState(false);
 
     useEffect(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.selectedVoiceId);
@@ -57,6 +62,10 @@ export default function SettingsPage() {
                 if (data.user?.id) {
                     setDbUserId(data.user.id);
                     checkTelegramStatus(data.user.id);
+                    if (data.user.username) {
+                        setUsername(data.user.username);
+                        setUsernameInput(data.user.username);
+                    }
                 }
             } catch { /* ignore */ }
         }
@@ -121,6 +130,36 @@ export default function SettingsPage() {
         }
     };
 
+    const saveUsername = async () => {
+        const clean = usernameInput.trim().toLowerCase();
+        if (clean === username) return;
+        if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+            setUsernameError('3-20 characters, letters, numbers, and underscores only');
+            return;
+        }
+        setUsernameSaving(true);
+        setUsernameError('');
+        setUsernameSuccess(false);
+        try {
+            const res = await fetch('/api/users/username', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: dbUserId, username: clean }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setUsername(clean);
+                setUsernameSuccess(true);
+                setTimeout(() => setUsernameSuccess(false), 2000);
+            } else {
+                setUsernameError(data.error || 'Failed to update username');
+            }
+        } catch {
+            setUsernameError('Network error');
+        }
+        setUsernameSaving(false);
+    };
+
     if (loading) return null;
     if (!user) return <LoginPage />;
 
@@ -128,6 +167,51 @@ export default function SettingsPage() {
         <AppShell>
             <div className="settings-page">
                 <h1 className="settings-title">Settings</h1>
+
+                <div className="settings-section">
+                    <h2 className="settings-section-title">Profile</h2>
+                    <div className="card">
+                        <div className="setting-row" style={{ alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                                <div className="setting-label">
+                                    <AtSign size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                                    Username
+                                </div>
+                                <div className="setting-description" style={{ marginBottom: 'var(--space-2)' }}>
+                                    Your unique handle for friends to find you
+                                </div>
+                                <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        value={usernameInput}
+                                        onChange={(e) => {
+                                            setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+                                            setUsernameError('');
+                                            setUsernameSuccess(false);
+                                        }}
+                                        onKeyDown={(e) => e.key === 'Enter' && saveUsername()}
+                                        placeholder="your_username"
+                                        maxLength={20}
+                                        style={{ flex: 1, maxWidth: 220, fontFamily: 'monospace' }}
+                                    />
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={saveUsername}
+                                        disabled={usernameSaving || usernameInput === username || !usernameInput.trim()}
+                                    >
+                                        {usernameSaving ? 'Saving...' : usernameSuccess ? <><Check size={14} /> Saved</> : 'Save'}
+                                    </button>
+                                </div>
+                                {usernameError && (
+                                    <div style={{ color: 'var(--color-error)', fontSize: 'var(--text-xs)', marginTop: 'var(--space-1)' }}>
+                                        {usernameError}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div className="settings-section">
                     <h2 className="settings-section-title">Appearance</h2>

@@ -72,7 +72,13 @@ Guidelines:
 - Reference specific members by name when relevant.
 - Encourage friendly competition and accountability.
 - Keep responses short — this is group chat, not an essay.
-- If someone asks about their personal memories and sharing is off, politely tell them to enable it in group settings.`;
+- If someone asks about their personal memories and sharing is off, politely tell them to enable it in group settings.
+
+IMPORTANT — Tool limitations:
+- You can ONLY use tools on behalf of the person who sent the message (the last [Name]: message).
+- You CANNOT set reminders, save memories, or perform actions for other group members.
+- If someone asks you to do something for another member (e.g. "remind Marcus to stretch"), suggest that Marcus ask you directly in their own chat.
+- In group chat, focus on advice, motivation, and accountability — save tool-heavy actions for 1:1 chats.`;
 }
 
 /**
@@ -162,14 +168,38 @@ export async function POST(request, { params }) {
 
                     const systemPrompt = await buildGroupSystemPrompt(group, userId);
 
-                    // Fetch recent messages for context
-                    const recentMessages = await prisma.groupMessage.findMany({
-                        where: { groupId },
+                    // Smart context: fetch messages since Cesy's last response + 5 before for continuity
+                    const lastCesyMsg = await prisma.groupMessage.findFirst({
+                        where: { groupId, role: 'assistant' },
                         orderBy: { createdAt: 'desc' },
-                        take: 20,
                     });
 
-                    const chatMessages = recentMessages.reverse().map((m) => ({
+                    let recentMessages;
+                    if (lastCesyMsg) {
+                        // Msgs since Cesy last spoke
+                        const msgsSince = await prisma.groupMessage.findMany({
+                            where: { groupId, createdAt: { gte: lastCesyMsg.createdAt } },
+                            orderBy: { createdAt: 'asc' },
+                            take: 30,
+                        });
+                        // + 5 msgs before for conversational continuity
+                        const msgsBefore = await prisma.groupMessage.findMany({
+                            where: { groupId, createdAt: { lt: lastCesyMsg.createdAt } },
+                            orderBy: { createdAt: 'desc' },
+                            take: 5,
+                        });
+                        recentMessages = [...msgsBefore.reverse(), ...msgsSince];
+                    } else {
+                        // First Cesy interaction — just use last 20
+                        recentMessages = await prisma.groupMessage.findMany({
+                            where: { groupId },
+                            orderBy: { createdAt: 'desc' },
+                            take: 20,
+                        });
+                        recentMessages = recentMessages.reverse();
+                    }
+
+                    const chatMessages = recentMessages.map((m) => ({
                         role: m.role,
                         content: m.role === 'user' ? `[${m.userName}]: ${m.content}` : m.content,
                     }));
