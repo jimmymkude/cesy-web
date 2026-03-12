@@ -13,28 +13,39 @@ datasource db {
 }
 
 model UserProfile {
-  id                 String    @id @default(uuid())
-  firebaseUid        String    @unique @map("firebase_uid")
-  email              String?
-  fullName           String?   @map("full_name")
-  avatarUrl          String?   @map("avatar_url")
-  subscriptionStatus String    @default("free") @map("subscription_status")
-  subscriptionEndsAt DateTime? @map("subscription_ends_at")
-  dailyMessageCount  Int       @default(0) @map("daily_message_count")
-  lastMessageDate    DateTime? @map("last_message_date")
-  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
-  telegramChatId      String?  @map("telegram_chat_id")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                  String    @id @default(uuid())
+  firebaseUid         String    @unique @map("firebase_uid")
+  username            String?   @unique
+  email               String?
+  fullName            String?   @map("full_name")
+  avatarUrl           String?   @map("avatar_url")
+  subscriptionStatus  String    @default("free") @map("subscription_status")
+  subscriptionEndsAt  DateTime? @map("subscription_ends_at")
+  dailyMessageCount   Int       @default(0) @map("daily_message_count")
+  lastMessageDate     DateTime? @map("last_message_date")
+  onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
+  telegramChatId      String?   @map("telegram_chat_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  settings    UserSettings?
-  threads     ChatThread[]
-  usageStats  UsageStats[]
-  assistants  StoredAssistant[]
-  memories    Memory[]
+  settings        UserSettings?
+  threads         ChatThread[]
+  usageStats      UsageStats[]
+  assistants      StoredAssistant[]
+  memories        Memory[]
   workoutSchedule WorkoutSchedule?
-  reminders   Reminder[]
-  timers      Timer[]
+  workoutLogs     WorkoutLog[]
+  reminders       Reminder[]
+  timers          Timer[]
+
+  // Social
+  sentFriendRequests     Friendship[]   @relation("FriendRequester")
+  receivedFriendRequests Friendship[]   @relation("FriendAddressee")
+  createdGroups          Group[]        @relation("GroupCreator")
+  groupMemberships       GroupMember[]
+  sentGroupInvites       GroupInvite[]  @relation("GroupInviter")
+  receivedGroupInvites   GroupInvite[]  @relation("GroupInvitee")
+  groupMessages          GroupMessage[]
 
   @@map("user_profiles")
 }
@@ -87,15 +98,15 @@ model UsageStats {
 }
 
 model StoredAssistant {
-  id           String    @id @default(uuid())
-  userId       String    @map("user_id")
-  assistantId  String    @map("assistant_id")
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  assistantId  String   @map("assistant_id")
   name         String
   instructions String?
   model        String
-  isActive     Boolean   @default(false) @map("is_active")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  isActive     Boolean  @default(false) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -103,14 +114,14 @@ model StoredAssistant {
 }
 
 model Memory {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
+  id        String                      @id @default(uuid())
+  userId    String                      @map("user_id")
   content   String
-  tags      Json     @default("[]")
-  eventDate DateTime? @map("event_date")
+  tags      Json                        @default("[]")
+  eventDate DateTime?                   @map("event_date")
   embedding Unsupported("vector(512)")? // pgvector — Voyage AI embeddings
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime                    @default(now()) @map("created_at")
+  updatedAt DateTime                    @default(now()) @updatedAt @map("updated_at")
 
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -120,7 +131,7 @@ model Memory {
 model WorkoutSchedule {
   id          String   @id @default(uuid())
   userId      String   @unique @map("user_id")
-  schedule    Json     // Array of { dayOfWeek, workoutType, duration, equipment }
+  schedule    Json // Array of { dayOfWeek, workoutType, duration, equipment }
   lastUpdated DateTime @default(now()) @map("last_updated")
   rawResponse String?  @map("raw_response")
 
@@ -156,4 +167,114 @@ model Timer {
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("timers")
+}
+
+// ─── Social & Groups ─────────────────────────────────────────────────
+
+model WorkoutLog {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  date        DateTime @db.Date
+  workoutType String   @map("workout_type")
+  duration    Int? // minutes
+  notes       String?
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, workoutType])
+  @@map("workout_logs")
+}
+
+model Friendship {
+  id          String   @id @default(uuid())
+  requesterId String   @map("requester_id")
+  addresseeId String   @map("addressee_id")
+  status      String   @default("pending") // pending, accepted, rejected
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  requester UserProfile @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee UserProfile @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@map("friendships")
+}
+
+model Group {
+  id         String   @id @default(uuid())
+  name       String
+  creatorId  String   @map("creator_id")
+  maxMembers Int      @default(10) @map("max_members")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  creator  UserProfile    @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members  GroupMember[]
+  invites  GroupInvite[]
+  messages GroupMessage[]
+  memories GroupMemory[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id                   String   @id @default(uuid())
+  groupId              String   @map("group_id")
+  userId               String   @map("user_id")
+  role                 String   @default("member") // admin, member
+  sharePrivateMemories Boolean  @default(false) @map("share_private_memories")
+  chatColor            String   @map("chat_color")
+  joinedAt             DateTime @default(now()) @map("joined_at")
+
+  group Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model GroupInvite {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  inviterId String   @map("inviter_id")
+  inviteeId String   @map("invitee_id")
+  status    String   @default("pending") // pending, accepted, declined
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group   Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter UserProfile @relation("GroupInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee UserProfile @relation("GroupInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, inviteeId])
+  @@map("group_invites")
+}
+
+model GroupMessage {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  userId    String?  @map("user_id") // null for Cesy messages
+  userName  String?  @map("user_name")
+  role      String // user, assistant
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  UserProfile? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("group_messages")
+}
+
+model GroupMemory {
+  id        String                      @id @default(uuid())
+  groupId   String                      @map("group_id")
+  content   String
+  tags      Json                        @default("[]")
+  embedding Unsupported("vector(512)")?
+  createdAt DateTime                    @default(now()) @map("created_at")
+  updatedAt DateTime                    @default(now()) @updatedAt @map("updated_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("group_memories")
 }
