@@ -42,6 +42,7 @@ export function AuthProvider({ children }) {
                                     email: firebaseUser.email,
                                     fullName: firebaseUser.displayName,
                                     avatarUrl: firebaseUser.photoURL,
+                                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                                 }),
                             });
                         } catch (e) {

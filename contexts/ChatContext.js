@@ -99,7 +99,7 @@ Get it right on the FIRST response — don't make the user correct you.`;
             const scheduleLines = workoutRef.current.schedule
                 .map((w) => `- ${w.dayName}: ${w.workoutType}, ${w.duration} minutes${w.equipment?.length ? ` (Equipment: ${w.equipment.join(', ')})` : ''}`)
                 .join('\n');
-            prompt += `\n\nThe user's current workout schedule is:\n${scheduleLines}\n\nReference this schedule when the user asks about their workouts. If they ask to modify it, output the full updated schedule in the required format.`;
+            prompt += `\n\nThe user's current workout schedule is:\n${scheduleLines}\n\nReference this schedule when the user asks about their workouts. If they ask to modify it, output the full updated schedule in the required format.\n\nIMPORTANT: You have a background process that automatically sends personalized workout reminders via Telegram each day when a workout is scheduled. You do NOT need to set manual reminders for recurring workouts — they are handled automatically. If the user asks about workout reminders, let them know it's already taken care of.`;
         }
 
         if (user?.displayName) {

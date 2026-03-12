@@ -7,7 +7,8 @@ import { useChat } from '@/contexts/ChatContext';
 import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import VoiceCall from '@/components/VoiceCall';
-import { MessageSquare, Mic, Trash2, Send, ShoppingCart, RefreshCw } from 'lucide-react';
+import MessageBubble from '@/components/MessageBubble';
+import { MessageSquare, Mic, Trash2, Send } from 'lucide-react';
 
 function ChatArea() {
   const { user } = useAuth();
@@ -69,46 +70,13 @@ function ChatArea() {
           )}
 
           {messages.map((msg) => (
-            <div key={msg.id} className={`message message-${msg.role}`}>
-              <div className={`message-avatar message-avatar-${msg.role}`}>
-                {msg.role === 'user' ? (
-                  user?.displayName?.[0]?.toUpperCase() || '?'
-                ) : (
-                  'C'
-                )}
-              </div>
-              <div className="message-bubble">
-                {msg.content}
-                {msg.role === 'user' && (
-                  <button
-                    className="retry-btn"
-                    onClick={() => retryMessage(msg.id)}
-                    disabled={isLoading}
-                    title="Retry this message"
-                  >
-                    <RefreshCw size={13} />
-                  </button>
-                )}
-                {msg.amazonCarts?.length > 0 && (
-                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {msg.amazonCarts.map((cart, ci) => (
-                      cart.items.map((item, ii) => (
-                        <a
-                          key={`${ci}-${ii}`}
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="amazon-cart-btn"
-                        >
-                          <ShoppingCart size={16} />
-                          <span>{item.name}</span>
-                        </a>
-                      ))
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              user={user}
+              onRetry={retryMessage}
+              isLoading={isLoading}
+            />
           ))}
 
           {isLoading && (

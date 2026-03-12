@@ -688,6 +688,10 @@ a:hover {
   position: relative;
 }
 
+.message-assistant .message-bubble {
+  position: relative;
+}
+
 .retry-btn {
   position: absolute;
   bottom: -2px;
@@ -716,6 +720,101 @@ a:hover {
 .retry-btn:disabled {
   cursor: not-allowed;
   opacity: 0.2 !important;
+}
+
+/* Copy button — appears on hover */
+.copy-btn {
+  position: absolute;
+  bottom: -2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+}
+
+.message-user .copy-btn {
+  left: -28px;
+}
+
+.message-assistant .copy-btn {
+  right: -28px;
+}
+
+/* Shift retry further left when copy is also present on user bubbles */
+.message-user .retry-btn {
+  left: -52px;
+}
+
+.message:hover .copy-btn {
+  opacity: 0.6;
+}
+
+.copy-btn:hover {
+  opacity: 1 !important;
+  color: var(--color-accent);
+}
+
+/* Copied toast */
+.copy-toast {
+  position: absolute;
+  bottom: -22px;
+  font-size: 11px;
+  font-weight: var(--weight-semibold);
+  color: var(--color-accent);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: toastFadeIn 0.2s ease;
+}
+
+.message-user .copy-toast {
+  left: -32px;
+}
+
+.message-assistant .copy-toast {
+  right: -32px;
+}
+
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Clickable links inside message bubbles */
+.message-link {
+  color: var(--color-accent) !important;
+  text-decoration: underline;
+  text-decoration-color: rgba(234, 179, 8, 0.3);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--transition-fast), color var(--transition-fast);
+  word-break: break-all;
+}
+
+.message-link:hover {
+  color: var(--color-accent-hover) !important;
+  text-decoration-color: var(--color-accent-hover);
+}
+
+.message-user .message-link {
+  color: white !important;
+  text-decoration-color: rgba(255, 255, 255, 0.5);
+}
+
+.message-user .message-link:hover {
+  color: white !important;
+  text-decoration-color: white;
 }
 
 .chat-input-area {

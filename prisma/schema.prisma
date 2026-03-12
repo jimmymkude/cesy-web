@@ -46,6 +46,7 @@ model UserSettings {
   voiceId             String? @map("voice_id")
   darkMode            Boolean @default(false) @map("dark_mode")
   localStorageEnabled Boolean @default(true) @map("local_storage_enabled")
+  timezone            String  @default("America/Los_Angeles")
   preferences         Json?
 
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)

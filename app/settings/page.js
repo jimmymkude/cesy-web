@@ -6,7 +6,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useCallback } from 'react';
 import { VOICE, STORAGE_KEYS } from '@/lib/constants';
-import { Volume2, Smartphone, CheckCircle2, AlertTriangle, Link as LinkIcon, RefreshCw, Copy, Check } from 'lucide-react';
+import { Volume2, Smartphone, CheckCircle2, AlertTriangle, Link as LinkIcon, RefreshCw, Copy, Check, Globe } from 'lucide-react';
 
 export default function SettingsPage() {
     const { user, loading } = useAuth();
@@ -20,6 +20,7 @@ export default function SettingsPage() {
     const [telegramLinked, setTelegramLinked] = useState(null); // null = checking, true/false = known
     const [botConfigured, setBotConfigured] = useState(true);
     const [linkCopied, setLinkCopied] = useState(false);
+    const [userTimezone, setUserTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
 
     useEffect(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.selectedVoiceId);
@@ -49,6 +50,7 @@ export default function SettingsPage() {
                         email: user.email,
                         fullName: user.displayName,
                         avatarUrl: user.photoURL,
+                        timezone: userTimezone,
                     }),
                 });
                 const data = await res.json();
@@ -195,6 +197,28 @@ export default function SettingsPage() {
                     <h2 className="settings-section-title">Notifications</h2>
                     <div className="card">
                         <div className="setting-row">
+                            <div>
+                                <div className="setting-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Globe size={18} /> Timezone
+                                </div>
+                                <div className="setting-description">
+                                    Auto-detected from your browser. Used for workout reminders.
+                                </div>
+                            </div>
+                            <div style={{
+                                background: 'var(--color-surface-elevated)',
+                                padding: '6px 12px',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: 'var(--text-sm)',
+                                fontWeight: 500,
+                                color: 'var(--color-text-primary)',
+                                whiteSpace: 'nowrap',
+                            }}>
+                                {userTimezone.replace(/_/g, ' ')}
+                            </div>
+                        </div>
+
+                        <div className="setting-row" style={{ borderTop: '1px solid var(--color-divider)', marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)' }}>
                             <div>
                                 <div className="setting-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Smartphone size={18} /> Telegram Notifications

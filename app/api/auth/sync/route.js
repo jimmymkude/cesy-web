@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
  */
 export async function POST(request) {
     try {
-        const { firebaseUid, email, fullName, avatarUrl } = await request.json();
+        const { firebaseUid, email, fullName, avatarUrl, timezone } = await request.json();
 
         if (!firebaseUid) {
             return NextResponse.json({ error: 'Missing firebaseUid' }, { status: 400 });
@@ -21,6 +21,12 @@ export async function POST(request) {
                     email: email || undefined,
                     fullName: fullName || undefined,
                     avatarUrl: avatarUrl || undefined,
+                    // Backfill timezone on every sync if the browser sends it
+                    ...(timezone ? {
+                        settings: {
+                            update: { timezone },
+                        },
+                    } : {}),
                 },
                 create: {
                     firebaseUid,
@@ -31,6 +37,7 @@ export async function POST(request) {
                         create: {
                             assistantName: 'Cesy',
                             darkMode: true,
+                            timezone: timezone || 'America/Los_Angeles',
                         },
                     },
                 },
