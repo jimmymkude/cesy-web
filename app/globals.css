@@ -1886,3 +1886,347 @@ a:hover {
   justify-content: space-between;
   align-items: center;
 }
+
+/* ─── Friends Page ─────────────────────────────────────────────────── */
+
+.friends-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4);
+}
+
+.friends-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  padding-bottom: var(--space-2);
+}
+
+.friends-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.friends-tab:hover {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+}
+
+.friends-tab-active {
+  color: var(--color-accent);
+  background: rgba(234, 179, 8, 0.1);
+}
+
+.friends-badge {
+  background: var(--color-accent);
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.friends-section-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.friend-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  transition: background 0.15s ease;
+}
+
+.friend-card:hover {
+  background: var(--color-surface-elevated);
+}
+
+.friend-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-accent), #f59e0b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.friend-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.friend-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.friend-name {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.friend-username {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.friend-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.friend-pending-badge {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface-elevated);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+}
+
+.friends-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.friends-search-wrapper {
+  position: relative;
+  margin-bottom: var(--space-3);
+}
+
+.friends-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+}
+
+.friends-search-input {
+  padding-left: 38px !important;
+}
+
+.friends-loading {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  gap: 4px;
+}
+
+/* ─── Groups & Group Chat ──────────────────────────────────────────── */
+
+.groups-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4);
+}
+
+.group-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-card:hover {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-accent);
+}
+
+.group-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-accent), #f59e0b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-weight: 700;
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
+
+.group-info {
+  flex: 1;
+}
+
+.group-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.group-meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.group-detail {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px);
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.group-header-back {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: var(--space-1);
+}
+
+.group-header-back:hover {
+  color: var(--color-text-primary);
+}
+
+.group-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.group-msg {
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+}
+
+.group-msg-self {
+  align-self: flex-end;
+}
+
+.group-msg-other {
+  align-self: flex-start;
+}
+
+.group-msg-assistant {
+  align-self: flex-start;
+}
+
+.group-msg-name {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  padding-left: 4px;
+}
+
+.group-msg-bubble {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.group-msg-assistant .group-msg-bubble {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  color: var(--color-text-primary);
+}
+
+.group-msg-time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  padding: 0 4px;
+}
+
+/* Members tab in group detail */
+.group-members-list {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.group-member-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.group-member-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.group-member-role {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface-elevated);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+}

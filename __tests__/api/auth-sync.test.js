@@ -10,6 +10,7 @@ jest.mock('@/lib/prisma', () => ({
         userProfile: {
             upsert: jest.fn(),
             findUnique: jest.fn(),
+            update: jest.fn(),
         },
     },
 }));
@@ -33,7 +34,7 @@ describe('POST /api/auth/sync', () => {
     });
 
     it('upserts user and returns user data', async () => {
-        const mockUser = { id: 'user-1', firebaseUid: 'fb-123', email: 'test@test.com' };
+        const mockUser = { id: 'user-1', firebaseUid: 'fb-123', email: 'test@test.com', username: 'test_user' };
         prisma.userProfile.upsert.mockResolvedValue(mockUser);
 
         const res = await POST(makeRequest({
@@ -48,6 +49,28 @@ describe('POST /api/auth/sync', () => {
         expect(prisma.userProfile.upsert).toHaveBeenCalledWith(
             expect.objectContaining({
                 where: { firebaseUid: 'fb-123' },
+            })
+        );
+    });
+
+    it('auto-generates username if not set', async () => {
+        const mockUserNoUsername = { id: 'user-1', firebaseUid: 'fb-123', username: null };
+        prisma.userProfile.upsert.mockResolvedValue(mockUserNoUsername);
+        // findUnique for username availability check
+        prisma.userProfile.findUnique.mockResolvedValue(null);
+        const mockUpdated = { ...mockUserNoUsername, username: 'test_user' };
+        prisma.userProfile.update.mockResolvedValue(mockUpdated);
+
+        const res = await POST(makeRequest({
+            firebaseUid: 'fb-123',
+            fullName: 'Test User',
+        }));
+        const data = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(prisma.userProfile.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({ username: expect.any(String) }),
             })
         );
     });
