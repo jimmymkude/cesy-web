@@ -1892,9 +1892,9 @@ a:hover {
 /* ─── Friends Page ─────────────────────────────────────────────────── */
 
 .friends-page {
-  max-width: 640px;
+  max-width: 800px;
   margin: 0 auto;
-  padding: var(--space-4) var(--space-4);
+  padding: var(--space-6) var(--space-6);
 }
 
 .friends-tabs {
@@ -2067,9 +2067,9 @@ a:hover {
 /* ─── Groups & Group Chat ──────────────────────────────────────────── */
 
 .groups-page {
-  max-width: 640px;
+  max-width: 800px;
   margin: 0 auto;
-  padding: var(--space-4) var(--space-4);
+  padding: var(--space-6) var(--space-6);
 }
 
 .group-card {
@@ -2132,6 +2132,12 @@ a:hover {
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+/* Prevent group detail tabs from being compressed by flex container */
+.group-detail .friends-tabs {
+  flex-shrink: 0;
 }
 
 .group-header-back {
