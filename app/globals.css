@@ -609,6 +609,32 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  position: relative;
+}
+
+.scroll-to-bottom-btn {
+  position: sticky;
+  bottom: 12px;
+  align-self: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--color-bg-secondary);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  transition: transform 0.15s ease, background 0.15s ease;
+  animation: messageIn 0.2s ease;
+}
+
+.scroll-to-bottom-btn:hover {
+  background: var(--color-bg-tertiary);
+  transform: scale(1.1);
 }
 
 .message {

@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X, Brain, Trash2 } from 'lucide-react';
+import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X, Brain, Trash2, ArrowDown } from 'lucide-react';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -22,8 +22,11 @@ export default function GroupDetailPage() {
     const [friends, setFriends] = useState([]);
     const [groupMemories, setGroupMemories] = useState([]);
     const [inviting, setInviting] = useState(null);
+    const [showScrollBtn, setShowScrollBtn] = useState(false);
     const messagesEndRef = useRef(null);
+    const groupChatRef = useRef(null);
     const inputRef = useRef(null);
+    const isNearBottomRef = useRef(true);
     const [myMembership, setMyMembership] = useState(null);
 
     useEffect(() => {
@@ -104,8 +107,25 @@ export default function GroupDetailPage() {
         loadGroupMemories();
     }, [loadGroup, loadMessages, loadFriends, loadGroupMemories]);
 
+    // Track scroll position in group chat
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const container = groupChatRef.current;
+        if (!container) return;
+        const handleScroll = () => {
+            const { scrollTop, scrollHeight, clientHeight } = container;
+            const dist = scrollHeight - scrollTop - clientHeight;
+            isNearBottomRef.current = dist < 150;
+            setShowScrollBtn(dist > 300);
+        };
+        container.addEventListener('scroll', handleScroll, { passive: true });
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [activeTab]);
+
+    // Auto-scroll only when near the bottom
+    useEffect(() => {
+        if (isNearBottomRef.current) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [messages]);
 
     // Poll for new messages every 5s when on chat tab
@@ -120,6 +140,7 @@ export default function GroupDetailPage() {
         setSending(true);
         const text = input;
         setInput('');
+        isNearBottomRef.current = true; // Always scroll for own messages
 
         // Optimistic update
         const optimisticMsg = {
@@ -283,7 +304,7 @@ export default function GroupDetailPage() {
                 {/* Chat Tab */}
                 {activeTab === 'chat' && (
                     <>
-                        <div className="group-chat-messages">
+                        <div className="group-chat-messages" ref={groupChatRef}>
                             {messages.length === 0 && (
                                 <div className="friends-empty" style={{ padding: 'var(--space-8) 0' }}>
                                     <MessageSquare size={40} strokeWidth={1.5} />
@@ -332,6 +353,15 @@ export default function GroupDetailPage() {
                                 );
                             })}
                             <div ref={messagesEndRef} />
+                            {showScrollBtn && (
+                                <button
+                                    className="scroll-to-bottom-btn"
+                                    onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                                    aria-label="Scroll to bottom"
+                                >
+                                    <ArrowDown size={18} strokeWidth={2.5} />
+                                </button>
+                            )}
                         </div>
 
                         <div className="chat-input-area">

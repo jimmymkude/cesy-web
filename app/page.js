@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
@@ -8,21 +8,45 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import VoiceCall from '@/components/VoiceCall';
 import MessageBubble from '@/components/MessageBubble';
-import { MessageSquare, Mic, Trash2, Send } from 'lucide-react';
+import { MessageSquare, Mic, Trash2, Send, ArrowDown } from 'lucide-react';
 
 function ChatArea() {
   const { user } = useAuth();
   const { messages, isLoading, error, sendMessage, retryMessage, clearChat } = useChat();
   const [input, setInput] = useState('');
   const [showVoiceCall, setShowVoiceCall] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
   const inputRef = useRef(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const sentQueryRef = useRef(false);
+  const isNearBottomRef = useRef(true);
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  // Track scroll position — only auto-scroll if user is near the bottom
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      isNearBottomRef.current = distanceFromBottom < 150;
+      setShowScrollBtn(distanceFromBottom > 300);
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Auto-scroll only when near the bottom
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, isLoading]);
 
   // Auto-send from ?q= or ?context= query param
@@ -42,6 +66,7 @@ function ChatArea() {
     if (!input.trim() || isLoading) return;
     const text = input;
     setInput('');
+    isNearBottomRef.current = true; // Always scroll for own messages
     await sendMessage(text);
     inputRef.current?.focus();
   };
@@ -56,7 +81,7 @@ function ChatArea() {
   return (
     <>
       <div className="chat-container">
-        <div className="chat-messages">
+        <div className="chat-messages" ref={chatContainerRef}>
           {messages.length === 0 && !isLoading && (
             <div className="empty-state">
               <div className="empty-state-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
@@ -106,6 +131,16 @@ function ChatArea() {
           )}
 
           <div ref={messagesEndRef} />
+
+          {showScrollBtn && (
+            <button
+              className="scroll-to-bottom-btn"
+              onClick={scrollToBottom}
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDown size={18} strokeWidth={2.5} />
+            </button>
+          )}
         </div>
 
         <div className="chat-input-area">
