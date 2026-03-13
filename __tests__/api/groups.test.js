@@ -5,7 +5,8 @@ import { GET as getGroups, POST as createGroup } from '@/app/api/groups/route';
 import { GET as getGroupDetail, DELETE as deleteGroup } from '@/app/api/groups/[groupId]/route';
 import { GET as getInvites, PATCH as handleInvite } from '@/app/api/groups/invites/route';
 import { POST as inviteToGroup } from '@/app/api/groups/[groupId]/invite/route';
-import { PATCH as updateMember } from '@/app/api/groups/[groupId]/members/route';
+import { PATCH as updateMember, DELETE as removeMember } from '@/app/api/groups/[groupId]/members/route';
+import { GET as getGroupActivity } from '@/app/api/groups/activity/route';
 import {
     GET as getGroupChat, POST as sendGroupChat, shouldCesyRespond,
     executeGroupTool, buildGroupToolDefinitions,
@@ -22,6 +23,7 @@ jest.mock('@/lib/prisma', () => ({
             create: jest.fn(),
             update: jest.fn(),
             count: jest.fn(),
+            delete: jest.fn(),
         },
         group: {
             findUnique: jest.fn(),
@@ -40,6 +42,9 @@ jest.mock('@/lib/prisma', () => ({
             create: jest.fn(),
         },
         groupMemory: {
+            findMany: jest.fn(),
+        },
+        workoutLog: {
             findMany: jest.fn(),
         },
         $transaction: jest.fn(),
@@ -289,6 +294,93 @@ describe('/api/groups/[groupId]/members', () => {
         const data = await res.json();
         expect(data.member.sharePrivateMemories).toBe(true);
     });
+
+    it('PATCH promotes member to admin (by admin)', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'admin' });
+        prisma.groupMember.update.mockResolvedValue({ role: 'admin', userId: 'u2' });
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'PATCH', {
+            userId: 'u1', promoteUserId: 'u2',
+        });
+        const res = await updateMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        const data = await res.json();
+        expect(data.message).toContain('promoted');
+    });
+
+    it('PATCH rejects promote from non-admin', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'member' });
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'PATCH', {
+            userId: 'u1', promoteUserId: 'u2',
+        });
+        const res = await updateMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(403);
+    });
+
+    it('DELETE allows user to leave group', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'member', userId: 'u1' });
+        prisma.groupMember.delete.mockResolvedValue({});
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'DELETE', { userId: 'u1' });
+        const res = await removeMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        const data = await res.json();
+        expect(data.message).toContain('Left group');
+    });
+
+    it('DELETE blocks last admin from leaving when others exist', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'admin', userId: 'u1' });
+        prisma.groupMember.count
+            .mockResolvedValueOnce(0)  // no other admins
+            .mockResolvedValueOnce(2); // other members exist
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'DELETE', { userId: 'u1' });
+        const res = await removeMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data.error).toContain('Promote');
+    });
+
+    it('DELETE allows solo admin to leave (deletes group)', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'admin', userId: 'u1' });
+        prisma.groupMember.count
+            .mockResolvedValueOnce(0)  // no other admins
+            .mockResolvedValueOnce(0); // no other members
+        prisma.groupMember.delete.mockResolvedValue({});
+        prisma.group.delete.mockResolvedValue({});
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'DELETE', { userId: 'u1' });
+        const res = await removeMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        const data = await res.json();
+        expect(data.message).toContain('deleted');
+    });
+
+    it('DELETE allows admin to kick another member', async () => {
+        prisma.groupMember.findUnique
+            .mockResolvedValueOnce({ role: 'admin', userId: 'u1' })  // requester is admin
+            .mockResolvedValueOnce({ role: 'member', userId: 'u2' }); // target exists
+        prisma.groupMember.delete.mockResolvedValue({});
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'DELETE', {
+            userId: 'u1', targetUserId: 'u2',
+        });
+        const res = await removeMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        const data = await res.json();
+        expect(data.message).toContain('removed');
+    });
+
+    it('DELETE rejects kick from non-admin', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'member', userId: 'u1' });
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'DELETE', {
+            userId: 'u1', targetUserId: 'u2',
+        });
+        const res = await removeMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(403);
+    });
+
+    it('DELETE returns 404 for non-member target', async () => {
+        prisma.groupMember.findUnique
+            .mockResolvedValueOnce({ role: 'admin', userId: 'u1' })  // requester is admin
+            .mockResolvedValueOnce(null); // target not a member
+        const req = makeRequest('http://localhost/api/groups/g1/members', 'DELETE', {
+            userId: 'u1', targetUserId: 'u99',
+        });
+        const res = await removeMember(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(404);
+    });
 });
 
 // ─── executeGroupTool Permission Tests ──────────────────────────────
@@ -415,5 +507,52 @@ describe('buildGroupToolDefinitions', () => {
         for (const def of defs) {
             expect(allGroupToolNames).toContain(def.name);
         }
+    });
+});
+
+// ─── Group Activity API Tests ───────────────────────────────────────
+
+describe('/api/groups/activity', () => {
+    beforeEach(() => jest.resetAllMocks());
+
+    it('GET returns 400 without userId', async () => {
+        const req = makeRequest('http://localhost/api/groups/activity');
+        const res = await getGroupActivity(req);
+        expect(res.status).toBe(400);
+    });
+
+    it('GET returns today\'s activity across groups', async () => {
+        prisma.groupMember.findMany.mockResolvedValue([
+            {
+                userId: 'u1',
+                group: {
+                    id: 'g1', name: 'Squad',
+                    members: [
+                        { userId: 'u1', user: { id: 'u1', fullName: 'Jimmy', username: 'jimmy' } },
+                        { userId: 'u2', user: { id: 'u2', fullName: 'Marcus', username: 'marcus' } },
+                    ],
+                },
+            },
+        ]);
+        prisma.workoutLog.findMany.mockResolvedValue([
+            { userId: 'u2', workoutType: 'Running', duration: 45 },
+        ]);
+
+        const req = makeRequest('http://localhost/api/groups/activity?userId=u1');
+        const res = await getGroupActivity(req);
+        const data = await res.json();
+        expect(data.groups).toHaveLength(1);
+        expect(data.groups[0].name).toBe('Squad');
+        expect(data.groups[0].completedToday).toBe(1);
+        expect(data.groups[0].totalMembers).toBe(2);
+        expect(data.groups[0].logs[0].userName).toBe('Marcus');
+    });
+
+    it('GET returns empty when user has no groups', async () => {
+        prisma.groupMember.findMany.mockResolvedValue([]);
+        const req = makeRequest('http://localhost/api/groups/activity?userId=u1');
+        const res = await getGroupActivity(req);
+        const data = await res.json();
+        expect(data.groups).toEqual([]);
     });
 });
