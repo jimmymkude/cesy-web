@@ -664,6 +664,22 @@ a:hover {
   border-bottom-left-radius: var(--radius-sm);
 }
 
+.message-bubble .inline-code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.message-bubble strong {
+  font-weight: 600;
+}
+
+.message-bubble em {
+  font-style: italic;
+}
+
 .amazon-cart-btn {
   display: inline-flex;
   align-items: center;

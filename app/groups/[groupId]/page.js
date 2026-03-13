@@ -463,7 +463,7 @@ export default function GroupDetailPage() {
                         {group.members.map((member) => {
                             const schedule = member.user.workoutSchedule?.schedule;
                             const todayWorkout = Array.isArray(schedule)
-                                ? schedule.find((s) => s.dayOfWeek === today)
+                                ? schedule.find((s) => s.dayName === today)
                                 : null;
 
                             return (
@@ -502,12 +502,12 @@ export default function GroupDetailPage() {
                                                         fontSize: 'var(--text-xs)',
                                                         padding: '2px 8px',
                                                         borderRadius: 'var(--radius-sm)',
-                                                        background: s.dayOfWeek === today ? 'rgba(234, 179, 8, 0.15)' : 'var(--color-surface-elevated)',
-                                                        color: s.dayOfWeek === today ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                                                        border: s.dayOfWeek === today ? '1px solid rgba(234, 179, 8, 0.3)' : 'none',
+                                                        background: s.dayName === today ? 'rgba(234, 179, 8, 0.15)' : 'var(--color-surface-elevated)',
+                                                        color: s.dayName === today ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                                                        border: s.dayName === today ? '1px solid rgba(234, 179, 8, 0.3)' : 'none',
                                                     }}
                                                 >
-                                                    {s.dayOfWeek.slice(0, 3)}: {s.workoutType}
+                                                    {s.dayName.slice(0, 3)}: {s.workoutType}
                                                 </span>
                                             ))}
                                         </div>

@@ -172,7 +172,8 @@ Guidelines:
 - Only respond when addressed or when fitness advice is relevant.
 - Reference specific members by name when relevant.
 - Encourage friendly competition and accountability.
-- Keep responses short — this is group chat, not an essay.`;
+- Keep responses short — this is group chat, not an essay.
+- IMPORTANT: Do NOT share personal memories, private conversations, or personal details from individual chats in the group. If you retrieve personal memories via tools, use them only to personalize your response — never quote or reveal them. The group chat context is ONLY the messages in this conversation.`;
 }
 
 // ─── Route Handlers ────────────────────────────────────────────────

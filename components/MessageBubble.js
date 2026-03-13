@@ -57,8 +57,58 @@ function linkifyContent(text) {
 }
 
 /**
+ * Format basic markdown: **bold**, *italic*, `code`
+ * Works on string segments (skips JSX elements from linkify).
+ */
+function formatMarkdown(parts) {
+    if (typeof parts === 'string') parts = [parts];
+    if (!Array.isArray(parts)) return parts;
+
+    const result = [];
+    let keyCounter = 0;
+
+    for (const part of parts) {
+        if (typeof part !== 'string') {
+            result.push(part); // JSX element (link), pass through
+            continue;
+        }
+
+        // Split by markdown patterns: **bold**, *italic*, `code`
+        const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
+        let lastIndex = 0;
+        let match;
+
+        while ((match = regex.exec(part)) !== null) {
+            if (match.index > lastIndex) {
+                result.push(part.slice(lastIndex, match.index));
+            }
+
+            if (match[2]) {
+                // **bold**
+                result.push(<strong key={`md-${keyCounter++}`}>{match[2]}</strong>);
+            } else if (match[3]) {
+                // *italic*
+                result.push(<em key={`md-${keyCounter++}`}>{match[3]}</em>);
+            } else if (match[4]) {
+                // `code`
+                result.push(<code key={`md-${keyCounter++}`} className="inline-code">{match[4]}</code>);
+            }
+
+            lastIndex = match.index + match[0].length;
+        }
+
+        if (lastIndex < part.length) {
+            result.push(part.slice(lastIndex));
+        }
+    }
+
+    return result.length > 0 ? result : parts;
+}
+
+/**
  * MessageBubble — renders a single chat message with:
  * - Clickable links (auto-detected URLs)
+ * - Markdown formatting (**bold**, *italic*, `code`)
  * - Copy-to-clipboard button (hover-reveal)
  * - Retry button (user messages only)
  * - Amazon cart buttons (when present)
@@ -86,7 +136,11 @@ export default function MessageBubble({ msg, user, onRetry, isLoading }) {
         }
     }, [msg.content]);
 
-    const content = linkifyContent(msg.content);
+    // Linkify first, then format markdown on assistant messages
+    let content = linkifyContent(msg.content);
+    if (msg.role === 'assistant') {
+        content = formatMarkdown(content);
+    }
 
     return (
         <div className={`message message-${msg.role}`}>
@@ -152,4 +206,4 @@ export default function MessageBubble({ msg, user, onRetry, isLoading }) {
 }
 
 // Export for testing
-export { linkifyContent };
+export { linkifyContent, formatMarkdown };
