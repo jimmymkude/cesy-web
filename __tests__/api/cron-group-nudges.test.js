@@ -30,7 +30,10 @@ function makeRequest(headers = {}) {
 }
 
 describe('POST /api/cron/group-nudges', () => {
-    beforeEach(() => jest.resetAllMocks());
+    beforeEach(() => {
+        jest.resetAllMocks();
+        prisma.workoutLog.findMany.mockResolvedValue([]);
+    });
 
     it('returns 401 when cron secret is set but not provided', async () => {
         process.env.CRON_SECRET = 'test-secret';

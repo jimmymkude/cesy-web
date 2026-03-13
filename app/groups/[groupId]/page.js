@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X } from 'lucide-react';
+import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X, Brain, Trash2 } from 'lucide-react';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -20,6 +20,7 @@ export default function GroupDetailPage() {
     const [sending, setSending] = useState(false);
     const [activeTab, setActiveTab] = useState('chat');
     const [friends, setFriends] = useState([]);
+    const [groupMemories, setGroupMemories] = useState([]);
     const [inviting, setInviting] = useState(null);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
@@ -79,11 +80,29 @@ export default function GroupDetailPage() {
         } catch { /* ignore */ }
     }, [dbUserId]);
 
+    const loadGroupMemories = useCallback(async () => {
+        if (!groupId || !dbUserId) return;
+        try {
+            const res = await fetch(`/api/groups/${groupId}/memories?userId=${dbUserId}`);
+            const data = await res.json();
+            if (data.memories) setGroupMemories(data.memories);
+        } catch { /* ignore */ }
+    }, [groupId, dbUserId]);
+
+    const deleteGroupMemory = async (memoryId) => {
+        if (!confirm('Delete this group memory?')) return;
+        try {
+            await fetch(`/api/groups/${groupId}/memories?userId=${dbUserId}&memoryId=${memoryId}`, { method: 'DELETE' });
+            setGroupMemories((prev) => prev.filter((m) => m.id !== memoryId));
+        } catch { /* ignore */ }
+    };
+
     useEffect(() => {
         loadGroup();
         loadMessages();
         loadFriends();
-    }, [loadGroup, loadMessages, loadFriends]);
+        loadGroupMemories();
+    }, [loadGroup, loadMessages, loadFriends, loadGroupMemories]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -245,6 +264,12 @@ export default function GroupDetailPage() {
                         onClick={() => setActiveTab('members')}
                     >
                         <Users size={16} /> Members
+                    </button>
+                    <button
+                        className={`friends-tab${activeTab === 'memories' ? ' friends-tab-active' : ''}`}
+                        onClick={() => setActiveTab('memories')}
+                    >
+                        <Brain size={16} /> Memories
                     </button>
                     <button
                         className={`friends-tab${activeTab === 'workouts' ? ' friends-tab-active' : ''}`}
@@ -452,6 +477,56 @@ export default function GroupDetailPage() {
                                     </div>
                                 ))}
                             </>
+                        )}
+                    </div>
+                )}
+
+                {/* Memories Tab */}
+                {activeTab === 'memories' && (
+                    <div className="group-members-list">
+                        <h3 className="friends-section-title">Group Memories</h3>
+                        {groupMemories.length === 0 ? (
+                            <div className="friend-username" style={{ textAlign: 'center', padding: 'var(--space-4)', opacity: 0.7 }}>
+                                No group memories yet. Cesy saves shared memories during group conversations.
+                            </div>
+                        ) : (
+                            groupMemories.map((memory) => (
+                                <div key={memory.id} className="card" style={{ padding: 'var(--space-3)', marginBottom: 'var(--space-2)', position: 'relative' }}>
+                                    <div style={{ fontSize: 'var(--text-sm)', lineHeight: 'var(--leading-relaxed)' }}>
+                                        {memory.content}
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-2)' }}>
+                                        <div className="friend-username" style={{ fontSize: 'var(--text-xs)' }}>
+                                            {new Date(memory.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </div>
+                                        {isAdmin && (
+                                            <button
+                                                className="btn btn-ghost"
+                                                onClick={() => deleteGroupMemory(memory.id)}
+                                                title="Delete memory"
+                                                style={{ padding: '4px', color: 'var(--color-error, #ef4444)' }}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    {memory.tags && Array.isArray(memory.tags) && memory.tags.length > 0 && (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginTop: 'var(--space-1)' }}>
+                                            {memory.tags.map((tag, i) => (
+                                                <span key={i} style={{
+                                                    fontSize: 'var(--text-xs)',
+                                                    padding: '1px 6px',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    background: 'rgba(234, 179, 8, 0.1)',
+                                                    color: 'var(--color-accent)',
+                                                }}>
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
                         )}
                     </div>
                 )}
