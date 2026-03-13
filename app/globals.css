@@ -1899,7 +1899,7 @@ a:hover {
 
 .friends-tabs {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin-bottom: var(--space-4);
   border-bottom: 1px solid var(--color-divider);
   padding-bottom: var(--space-2);
@@ -1909,7 +1909,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   border: none;
   background: transparent;
