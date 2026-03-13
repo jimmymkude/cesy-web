@@ -72,3 +72,47 @@ export async function DELETE(request, { params }) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
+/**
+ * PATCH /api/groups/[groupId]
+ * Update group settings (admin only).
+ * Body: { userId, cesyMode }
+ */
+export async function PATCH(request, { params }) {
+    try {
+        const { groupId } = await params;
+        const body = await request.json();
+        const { userId, cesyMode } = body;
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+        }
+
+        const membership = await prisma.groupMember.findUnique({
+            where: { groupId_userId: { groupId, userId } },
+        });
+
+        if (!membership || membership.role !== 'admin') {
+            return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+        }
+
+        const updates = {};
+        if (cesyMode && ['keywords', 'smart'].includes(cesyMode)) {
+            updates.cesyMode = cesyMode;
+        }
+
+        if (Object.keys(updates).length === 0) {
+            return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+        }
+
+        const updated = await prisma.group.update({
+            where: { id: groupId },
+            data: updates,
+        });
+
+        return NextResponse.json({ group: updated });
+    } catch (error) {
+        console.error('Update group error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}

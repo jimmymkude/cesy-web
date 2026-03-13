@@ -113,12 +113,67 @@ async function executeGroupTool(toolName, toolInput, senderId, groupContext) {
 // ─── Cesy Response Logic ────────────────────────────────────────────
 
 /**
- * Check if Cesy should respond to a group message.
+ * Keyword-based check — free, instant.
  */
-function shouldCesyRespond(content) {
+function keywordMatch(content) {
     const lower = content.toLowerCase();
     if (/\b(cesy|@cesy|hey cesy|yo cesy)\b/i.test(lower)) return true;
     if (/\b(workout|exercise|training|stretch|warm.?up|protein|calories|sets|reps|routine)\b/.test(lower)) return true;
+    return false;
+}
+
+/**
+ * Smart triage via Haiku — cheap, fast LLM call.
+ * Sends last few messages for context and asks YES/NO.
+ */
+async function haikuTriage(content, recentMessages) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return false;
+
+    const context = recentMessages
+        .slice(-5)
+        .map((m) => `${m.userName}: ${m.content}`)
+        .join('\n');
+
+    try {
+        const res = await fetch(`${ANTHROPIC_BASE}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+                model: 'claude-3-5-haiku-latest',
+                max_tokens: 3,
+                system: `You are deciding whether Cesy (an AI assistant) should respond in a group chat. Reply with ONLY "YES" or "NO".
+Say YES if: someone is talking to Cesy, asking a question Cesy can help with, the conversation naturally invites Cesy's input, or someone mentions fitness/workouts.
+Say NO if: people are clearly talking to each other, the message is casual banter between humans, or Cesy's input would be intrusive.`,
+                messages: [
+                    { role: 'user', content: `Recent chat:\n${context}\n\nLatest message: ${content}\n\nShould Cesy respond?` },
+                ],
+            }),
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        const answer = data.content?.[0]?.text?.trim().toUpperCase() || '';
+        return answer.startsWith('YES');
+    } catch {
+        return false; // fail closed — don't respond if triage fails
+    }
+}
+
+/**
+ * Check if Cesy should respond to a group message.
+ * cesyMode: 'keywords' (free regex) or 'smart' (Haiku triage).
+ */
+async function shouldCesyRespond(content, cesyMode = 'keywords', recentMessages = []) {
+    // Keywords always checked first — instant, free
+    if (keywordMatch(content)) return true;
+    // In smart mode, also ask Haiku
+    if (cesyMode === 'smart') {
+        return haikuTriage(content, recentMessages);
+    }
     return false;
 }
 
@@ -246,9 +301,27 @@ export async function POST(request, { params }) {
             },
         });
 
+        // Fetch cesyMode and recent messages for smart triage
+        const groupSettings = await prisma.group.findUnique({
+            where: { id: groupId },
+            select: { cesyMode: true },
+        });
+        const cesyMode = groupSettings?.cesyMode || 'keywords';
+
+        let recentMessages = [];
+        if (cesyMode === 'smart') {
+            recentMessages = await prisma.groupMessage.findMany({
+                where: { groupId, role: 'user' },
+                orderBy: { createdAt: 'desc' },
+                take: 5,
+                select: { userName: true, content: true },
+            });
+            recentMessages.reverse();
+        }
+
         // Check if Cesy should respond
         let cesyMessage = null;
-        if (shouldCesyRespond(content)) {
+        if (await shouldCesyRespond(content, cesyMode, recentMessages)) {
             try {
                 const apiKey = process.env.ANTHROPIC_API_KEY;
                 if (apiKey) {
@@ -393,6 +466,8 @@ export async function POST(request, { params }) {
 
 export {
     shouldCesyRespond,
+    keywordMatch,
+    haikuTriage,
     buildGroupSystemPrompt,
     executeGroupTool,
     buildGroupToolDefinitions,

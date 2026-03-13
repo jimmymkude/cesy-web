@@ -2,7 +2,7 @@
  * Tests for Groups APIs
  */
 import { GET as getGroups, POST as createGroup } from '@/app/api/groups/route';
-import { GET as getGroupDetail, DELETE as deleteGroup } from '@/app/api/groups/[groupId]/route';
+import { GET as getGroupDetail, DELETE as deleteGroup, PATCH as updateGroup } from '@/app/api/groups/[groupId]/route';
 import { GET as getInvites, PATCH as handleInvite } from '@/app/api/groups/invites/route';
 import { POST as inviteToGroup } from '@/app/api/groups/[groupId]/invite/route';
 import { PATCH as updateMember, DELETE as removeMember } from '@/app/api/groups/[groupId]/members/route';
@@ -10,6 +10,7 @@ import { GET as getGroupMemories, DELETE as deleteGroupMemory } from '@/app/api/
 import { GET as getGroupActivity } from '@/app/api/groups/activity/route';
 import {
     GET as getGroupChat, POST as sendGroupChat, shouldCesyRespond,
+    keywordMatch, haikuTriage,
     executeGroupTool, buildGroupToolDefinitions,
     GLOBAL_TOOLS, CROSS_USER_ALLOWED, SELF_ONLY_TOOLS,
 } from '@/app/api/groups/[groupId]/chat/route';
@@ -28,8 +29,10 @@ jest.mock('@/lib/prisma', () => ({
         },
         group: {
             findUnique: jest.fn(),
+            findMany: jest.fn(),
             create: jest.fn(),
             delete: jest.fn(),
+            update: jest.fn(),
         },
         groupInvite: {
             findMany: jest.fn(),
@@ -228,20 +231,20 @@ describe('/api/groups/invites', () => {
 });
 
 describe('shouldCesyRespond', () => {
-    it('responds when Cesy is mentioned', () => {
-        expect(shouldCesyRespond('Hey Cesy, what should I do today?')).toBe(true);
-        expect(shouldCesyRespond('yo cesy')).toBe(true);
-        expect(shouldCesyRespond('@cesy help')).toBe(true);
+    it('responds when Cesy is mentioned', async () => {
+        expect(await shouldCesyRespond('Hey Cesy, what should I do today?')).toBe(true);
+        expect(await shouldCesyRespond('yo cesy')).toBe(true);
+        expect(await shouldCesyRespond('@cesy help')).toBe(true);
     });
 
-    it('responds to fitness questions', () => {
-        expect(shouldCesyRespond('What workout should I do?')).toBe(true);
-        expect(shouldCesyRespond('How many sets for bench?')).toBe(true);
+    it('responds to fitness questions', async () => {
+        expect(await shouldCesyRespond('What workout should I do?')).toBe(true);
+        expect(await shouldCesyRespond('How many sets for bench?')).toBe(true);
     });
 
-    it('does not respond to casual chat', () => {
-        expect(shouldCesyRespond('hey whats up guys')).toBe(false);
-        expect(shouldCesyRespond('lol nice one')).toBe(false);
+    it('does not respond to casual chat', async () => {
+        expect(await shouldCesyRespond('hey whats up guys')).toBe(false);
+        expect(await shouldCesyRespond('lol nice one')).toBe(false);
     });
 });
 
@@ -622,5 +625,123 @@ describe('/api/groups/[groupId]/memories', () => {
         expect(res.status).toBe(200);
         const data = await res.json();
         expect(data.success).toBe(true);
+    });
+});
+
+// ─── keywordMatch tests ────────────────────────────────────────────
+describe('keywordMatch', () => {
+    it('matches Cesy name variations', () => {
+        expect(keywordMatch('Hey Cesy, how are you?')).toBe(true);
+        expect(keywordMatch('@cesy help me')).toBe(true);
+        expect(keywordMatch('yo cesy what should I do')).toBe(true);
+    });
+
+    it('matches fitness keywords', () => {
+        expect(keywordMatch('I need a workout plan')).toBe(true);
+        expect(keywordMatch('How many reps should I do?')).toBe(true);
+        expect(keywordMatch('tracking my calories today')).toBe(true);
+        expect(keywordMatch('my training session was tough')).toBe(true);
+    });
+
+    it('does not match casual messages', () => {
+        expect(keywordMatch('hey guys what is up')).toBe(false);
+        expect(keywordMatch('anyone want to grab lunch?')).toBe(false);
+        expect(keywordMatch('the movie was great')).toBe(false);
+    });
+});
+
+// ─── shouldCesyRespond smart mode tests ────────────────────────────
+describe('shouldCesyRespond (smart mode)', () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+        global.fetch = originalFetch;
+    });
+
+    it('returns true on keyword match even in smart mode (short-circuits)', async () => {
+        const result = await shouldCesyRespond('Hey Cesy, help me', 'smart', []);
+        expect(result).toBe(true);
+    });
+
+    it('calls Haiku triage in smart mode for non-keyword messages', async () => {
+        process.env.ANTHROPIC_API_KEY = 'test-key';
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ content: [{ text: 'YES' }] }),
+        });
+
+        const recentMessages = [
+            { userName: 'Alice', content: 'Can someone help me with my form?' },
+        ];
+        const result = await shouldCesyRespond('Is that right?', 'smart', recentMessages);
+        expect(result).toBe(true);
+        expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it('returns false when Haiku says NO', async () => {
+        process.env.ANTHROPIC_API_KEY = 'test-key';
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ content: [{ text: 'NO' }] }),
+        });
+
+        const result = await shouldCesyRespond('hey guys what is up', 'smart', []);
+        expect(result).toBe(false);
+    });
+
+    it('returns false on Haiku API failure (fail closed)', async () => {
+        process.env.ANTHROPIC_API_KEY = 'test-key';
+        global.fetch = jest.fn().mockRejectedValue(new Error('API down'));
+
+        const result = await shouldCesyRespond('anyone know?', 'smart', []);
+        expect(result).toBe(false);
+    });
+
+    it('returns false in keywords mode for non-matching message', async () => {
+        const result = await shouldCesyRespond('hey guys what is up', 'keywords', []);
+        expect(result).toBe(false);
+    });
+});
+
+// ─── PATCH /api/groups/[groupId] (cesyMode) ───────────────────────
+describe('PATCH /api/groups/[groupId]', () => {
+    it('returns 400 if no userId', async () => {
+        const req = makeRequest('http://localhost/api/groups/g1', 'PATCH', { cesyMode: 'smart' });
+        const res = await updateGroup(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(400);
+    });
+
+    it('returns 403 if not admin', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'member' });
+        const req = makeRequest('http://localhost/api/groups/g1', 'PATCH', { userId: 'u1', cesyMode: 'smart' });
+        const res = await updateGroup(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(403);
+    });
+
+    it('returns 400 for invalid cesyMode', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'admin' });
+        const req = makeRequest('http://localhost/api/groups/g1', 'PATCH', { userId: 'u1', cesyMode: 'invalid' });
+        const res = await updateGroup(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(400);
+    });
+
+    it('updates cesyMode to smart', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'admin' });
+        prisma.group.update.mockResolvedValue({ id: 'g1', cesyMode: 'smart' });
+        const req = makeRequest('http://localhost/api/groups/g1', 'PATCH', { userId: 'u1', cesyMode: 'smart' });
+        const res = await updateGroup(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.group.cesyMode).toBe('smart');
+    });
+
+    it('updates cesyMode to keywords', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ role: 'admin' });
+        prisma.group.update.mockResolvedValue({ id: 'g1', cesyMode: 'keywords' });
+        const req = makeRequest('http://localhost/api/groups/g1', 'PATCH', { userId: 'u1', cesyMode: 'keywords' });
+        const res = await updateGroup(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.group.cesyMode).toBe('keywords');
     });
 });

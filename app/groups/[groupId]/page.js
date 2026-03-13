@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X, Brain, Trash2 } from 'lucide-react';
+import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X, Brain, Trash2, Sparkles } from 'lucide-react';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -173,6 +173,19 @@ export default function GroupDetailPage() {
                     userId: dbUserId,
                     sharePrivateMemories: !myMembership.sharePrivateMemories,
                 }),
+            });
+            loadGroup();
+        } catch { /* ignore */ }
+    };
+
+    const toggleCesyMode = async () => {
+        if (!group) return;
+        const newMode = group.cesyMode === 'smart' ? 'keywords' : 'smart';
+        try {
+            await fetch(`/api/groups/${groupId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: dbUserId, cesyMode: newMode }),
             });
             loadGroup();
         } catch { /* ignore */ }
@@ -381,6 +394,35 @@ export default function GroupDetailPage() {
                                         style={{ color: myMembership.sharePrivateMemories ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
                                     >
                                         {myMembership.sharePrivateMemories
+                                            ? <ToggleRight size={28} />
+                                            : <ToggleLeft size={28} />
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Cesy Response Mode Toggle (admin only) */}
+                        {isAdmin && (
+                            <div className="card" style={{ padding: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div>
+                                        <div className="setting-label" style={{ fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+                                            <Sparkles size={14} /> Smart Cesy Responses
+                                        </div>
+                                        <div className="setting-description" style={{ fontSize: 'var(--text-xs)' }}>
+                                            {group.cesyMode === 'smart'
+                                                ? 'Cesy uses AI to decide when to respond naturally'
+                                                : 'Cesy only responds to keywords and her name'
+                                            }
+                                        </div>
+                                    </div>
+                                    <button
+                                        className="btn btn-ghost"
+                                        onClick={toggleCesyMode}
+                                        style={{ color: group.cesyMode === 'smart' ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
+                                    >
+                                        {group.cesyMode === 'smart'
                                             ? <ToggleRight size={28} />
                                             : <ToggleLeft size={28} />
                                         }
