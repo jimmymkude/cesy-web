@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X } from 'lucide-react';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -155,6 +155,47 @@ export default function GroupDetailPage() {
                     userId: dbUserId,
                     sharePrivateMemories: !myMembership.sharePrivateMemories,
                 }),
+            });
+            loadGroup();
+        } catch { /* ignore */ }
+    };
+
+    const leaveGroup = async () => {
+        if (!confirm('Are you sure you want to leave this group?')) return;
+        try {
+            const res = await fetch(`/api/groups/${groupId}/members`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: dbUserId }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'Failed to leave group');
+                return;
+            }
+            router.push('/groups');
+        } catch { /* ignore */ }
+    };
+
+    const kickMember = async (targetUserId, name) => {
+        if (!confirm(`Remove ${name} from the group?`)) return;
+        try {
+            await fetch(`/api/groups/${groupId}/members`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: dbUserId, targetUserId }),
+            });
+            loadGroup();
+        } catch { /* ignore */ }
+    };
+
+    const promoteMember = async (targetUserId, name) => {
+        if (!confirm(`Promote ${name} to admin?`)) return;
+        try {
+            await fetch(`/api/groups/${groupId}/members`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: dbUserId, promoteUserId: targetUserId }),
             });
             loadGroup();
         } catch { /* ignore */ }
@@ -324,28 +365,65 @@ export default function GroupDetailPage() {
                         )}
 
                         <h3 className="friends-section-title">Members ({group.members.length}/{group.maxMembers})</h3>
-                        {group.members.map((member) => (
-                            <div key={member.id} className="group-member-card">
-                                <div className="group-member-color" style={{ background: member.chatColor }} />
-                                <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: '12px' }}>
-                                    {member.user.avatarUrl ? (
-                                        <img src={member.user.avatarUrl} alt="" className="friend-avatar-img" />
-                                    ) : (
-                                        <span>{(member.user.fullName || '?')[0]}</span>
+                        {group.members.map((member) => {
+                            const isMe = member.userId === dbUserId;
+                            const isAdmin = myMembership?.role === 'admin';
+                            const memberName = member.user.fullName || member.user.username;
+                            return (
+                                <div key={member.id} className="group-member-card">
+                                    <div className="group-member-color" style={{ background: member.chatColor }} />
+                                    <div className="friend-avatar" style={{ width: 32, height: 32, fontSize: '12px' }}>
+                                        {member.user.avatarUrl ? (
+                                            <img src={member.user.avatarUrl} alt="" className="friend-avatar-img" />
+                                        ) : (
+                                            <span>{(member.user.fullName || '?')[0]}</span>
+                                        )}
+                                    </div>
+                                    <div className="friend-info">
+                                        <div className="friend-name">{memberName}{isMe ? ' (you)' : ''}</div>
+                                        <div className="friend-username">@{member.user.username}</div>
+                                    </div>
+                                    {member.role === 'admin' && (
+                                        <span className="group-member-role">
+                                            <Shield size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />
+                                            Admin
+                                        </span>
+                                    )}
+                                    {/* Admin actions on non-self members */}
+                                    {isAdmin && !isMe && (
+                                        <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+                                            {member.role !== 'admin' && (
+                                                <button
+                                                    className="btn btn-ghost"
+                                                    onClick={() => promoteMember(member.userId, memberName)}
+                                                    title="Promote to admin"
+                                                    style={{ padding: '4px', color: 'var(--color-accent)' }}
+                                                >
+                                                    <Crown size={14} />
+                                                </button>
+                                            )}
+                                            <button
+                                                className="btn btn-ghost"
+                                                onClick={() => kickMember(member.userId, memberName)}
+                                                title="Remove from group"
+                                                style={{ padding: '4px', color: 'var(--color-error, #ef4444)' }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="friend-info">
-                                    <div className="friend-name">{member.user.fullName || member.user.username}</div>
-                                    <div className="friend-username">@{member.user.username}</div>
-                                </div>
-                                {member.role === 'admin' && (
-                                    <span className="group-member-role">
-                                        <Shield size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />
-                                        Admin
-                                    </span>
-                                )}
-                            </div>
-                        ))}
+                            );
+                        })}
+
+                        {/* Leave Group */}
+                        <button
+                            className="btn btn-ghost"
+                            onClick={leaveGroup}
+                            style={{ marginTop: 'var(--space-4)', color: 'var(--color-error, #ef4444)', width: '100%', justifyContent: 'center' }}
+                        >
+                            <LogOut size={16} /> Leave Group
+                        </button>
 
                         {/* Invite Friends */}
                         {availableFriends.length > 0 && (
