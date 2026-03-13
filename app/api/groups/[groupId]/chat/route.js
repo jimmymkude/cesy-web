@@ -89,10 +89,19 @@ async function executeGroupTool(toolName, toolInput, senderId, groupContext) {
         if (!targetMember) {
             return `I don't see a member with that ID in this group. Double-check the userId!`;
         }
+    }
 
-        // Check memory sharing requirement
-        if (REQUIRES_MEMORY_SHARING.includes(toolName) && !targetMember.sharePrivateMemories) {
-            return `${targetName} hasn't enabled memory sharing for this group, so I can't access their memories. They can turn it on in the Members tab if they want to share! 🔒`;
+    // ── Memory sharing check: applies to ALL users (including sender) ──
+    // In group chat, tool results are visible to everyone, so even the sender's
+    // own memories should only be searchable if they've opted in to sharing.
+    if (REQUIRES_MEMORY_SHARING.includes(toolName)) {
+        const memberToCheck = groupContext.members.find((m) => m.userId === targetUserId);
+        const name = memberToCheck?.user?.fullName?.split(' ')[0] || 'that user';
+        if (!memberToCheck?.sharePrivateMemories) {
+            if (targetUserId === senderId) {
+                return `Your memory sharing is turned off for this group, so I can't search your memories here. Turn it on in the Members tab if you'd like me to access them in group chat! 🔒`;
+            }
+            return `${name} hasn't enabled memory sharing for this group, so I can't access their memories. They can turn it on in the Members tab if they want to share! 🔒`;
         }
     }
 

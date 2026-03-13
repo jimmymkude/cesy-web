@@ -429,6 +429,19 @@ describe('executeGroupTool', () => {
         expect(executeTool).not.toHaveBeenCalled();
     });
 
+    it('blocks search_memories for sender when their own sharing is disabled', async () => {
+        // u1 has sharePrivateMemories: false
+        const result = await executeGroupTool(
+            'search_memories',
+            { query: 'my diet' },
+            'u1',
+            mockGroupContext
+        );
+        expect(result).toContain('memory sharing');
+        expect(result).toContain('turned off');
+        expect(executeTool).not.toHaveBeenCalled();
+    });
+
     it('allows search_memories when target has sharing enabled', async () => {
         executeTool.mockResolvedValue('- likes pre-workout smoothies');
         const result = await executeGroupTool(
