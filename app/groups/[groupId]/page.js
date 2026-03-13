@@ -26,7 +26,7 @@ export default function GroupDetailPage() {
     const messagesEndRef = useRef(null);
     const groupChatRef = useRef(null);
     const inputRef = useRef(null);
-    const isNearBottomRef = useRef(true);
+    const shouldScrollRef = useRef(true);  // true on initial load
     const [myMembership, setMyMembership] = useState(null);
 
     useEffect(() => {
@@ -107,23 +107,23 @@ export default function GroupDetailPage() {
         loadGroupMemories();
     }, [loadGroup, loadMessages, loadFriends, loadGroupMemories]);
 
-    // Track scroll position in group chat
+    // Track scroll position in group chat for showing the button
     useEffect(() => {
         const container = groupChatRef.current;
         if (!container) return;
         const handleScroll = () => {
             const { scrollTop, scrollHeight, clientHeight } = container;
             const dist = scrollHeight - scrollTop - clientHeight;
-            isNearBottomRef.current = dist < 150;
             setShowScrollBtn(dist > 300);
         };
         container.addEventListener('scroll', handleScroll, { passive: true });
         return () => container.removeEventListener('scroll', handleScroll);
     }, [activeTab]);
 
-    // Auto-scroll only when near the bottom
+    // Auto-scroll only when explicitly requested (user sent a message or initial load)
     useEffect(() => {
-        if (isNearBottomRef.current) {
+        if (shouldScrollRef.current) {
+            shouldScrollRef.current = false;
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages]);
@@ -140,7 +140,7 @@ export default function GroupDetailPage() {
         setSending(true);
         const text = input;
         setInput('');
-        isNearBottomRef.current = true; // Always scroll for own messages
+        shouldScrollRef.current = true; // Scroll for own messages
 
         // Optimistic update
         const optimisticMsg = {

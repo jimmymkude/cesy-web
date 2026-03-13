@@ -22,32 +22,33 @@ function ChatArea() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sentQueryRef = useRef(false);
-  const isNearBottomRef = useRef(true);
+  const shouldScrollRef = useRef(true);  // true on initial load
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollBtn(false);
   }, []);
 
-  // Track scroll position — only auto-scroll if user is near the bottom
+  // Track scroll position to show/hide the scroll-to-bottom button
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-      isNearBottomRef.current = distanceFromBottom < 150;
       setShowScrollBtn(distanceFromBottom > 300);
     };
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Auto-scroll only when near the bottom
+  // Auto-scroll only when explicitly requested (user sent a message or initial load)
   useEffect(() => {
-    if (isNearBottomRef.current) {
+    if (shouldScrollRef.current) {
+      shouldScrollRef.current = false;
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isLoading]);
+  }, [messages]);
 
   // Auto-send from ?q= or ?context= query param
   useEffect(() => {
@@ -66,7 +67,7 @@ function ChatArea() {
     if (!input.trim() || isLoading) return;
     const text = input;
     setInput('');
-    isNearBottomRef.current = true; // Always scroll for own messages
+    shouldScrollRef.current = true; // Scroll for own messages
     await sendMessage(text);
     inputRef.current?.focus();
   };
