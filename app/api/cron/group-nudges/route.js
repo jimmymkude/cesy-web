@@ -50,17 +50,26 @@ export async function POST(request) {
                 const telegramChatId = member.user.telegramChatId;
                 if (!telegramChatId) continue;
 
-                // Get local hour for this user
-                let localHour;
+                // Get local hour + minute for this user
+                let localHour, localMinute;
                 try {
                     localHour = parseInt(new Intl.DateTimeFormat('en-US', {
                         timeZone: tz, hour: 'numeric', hour12: false,
+                    }).format(now));
+                    localMinute = parseInt(new Intl.DateTimeFormat('en-US', {
+                        timeZone: tz, minute: 'numeric',
                     }).format(now));
                 } catch {
                     localHour = parseInt(new Intl.DateTimeFormat('en-US', {
                         timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false,
                     }).format(now));
+                    localMinute = parseInt(new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'America/Los_Angeles', minute: 'numeric',
+                    }).format(now));
                 }
+
+                // Only fire in the first 15-minute window to avoid duplicate nudges
+                if (localMinute >= 15) continue;
 
                 // Morning motivation (8 AM local)
                 if (localHour === 8) {
