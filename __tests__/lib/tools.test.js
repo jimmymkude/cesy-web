@@ -40,6 +40,12 @@ jest.mock('@/lib/prisma', () => ({
         },
         groupMember: {
             findMany: jest.fn(),
+            findFirst: jest.fn(),
+        },
+        groupMemory: {
+            findFirst: jest.fn(),
+            findMany: jest.fn(),
+            create: jest.fn(),
         },
         $executeRawUnsafe: jest.fn(),
         $queryRawUnsafe: jest.fn(),
@@ -51,7 +57,7 @@ const originalFetch = global.fetch;
 
 describe('TOOLS definitions', () => {
     it('exports 13 tool definitions', () => {
-        expect(TOOLS).toHaveLength(18);
+        expect(TOOLS).toHaveLength(20);
     });
 
     it('all tools have required schema fields', () => {
@@ -1006,6 +1012,68 @@ describe('executeTool', () => {
 
             expect(result).toContain('Error logging workout');
             expect(result).toContain('DB constraint');
+        });
+    });
+
+    // ── save_group_memory ────────────────────────────────────
+    describe('save_group_memory', () => {
+        it('rejects non-members', async () => {
+            prisma.groupMember.findFirst.mockResolvedValue(null);
+            const result = await executeTool('save_group_memory', {
+                groupId: 'g1', content: 'Team goal: run 5k',
+            }, 'u1');
+            expect(result).toContain('not a member');
+        });
+
+        it('deduplicates existing content', async () => {
+            prisma.groupMember.findFirst.mockResolvedValue({ id: 'gm1' });
+            prisma.groupMemory.findFirst.mockResolvedValue({ id: 'existing' });
+            const result = await executeTool('save_group_memory', {
+                groupId: 'g1', content: 'Team goal: run 5k',
+            }, 'u1');
+            expect(result).toContain('already saved');
+        });
+
+        it('saves new group memory', async () => {
+            prisma.groupMember.findFirst.mockResolvedValue({ id: 'gm1' });
+            prisma.groupMemory.findFirst.mockResolvedValue(null);
+            prisma.groupMemory.create.mockResolvedValue({ id: 'gm-new' });
+            const result = await executeTool('save_group_memory', {
+                groupId: 'g1', content: 'Team goal: run 5k',
+            }, 'u1');
+            expect(result).toContain('Saved group memory');
+            expect(result).toContain('Team goal: run 5k');
+        });
+    });
+
+    // ── search_group_memories ────────────────────────────────
+    describe('search_group_memories', () => {
+        it('rejects non-members', async () => {
+            prisma.groupMember.findFirst.mockResolvedValue(null);
+            const result = await executeTool('search_group_memories', {
+                groupId: 'g1', query: 'goals',
+            }, 'u1');
+            expect(result).toContain('not a member');
+        });
+
+        it('falls back to keyword search', async () => {
+            prisma.groupMember.findFirst.mockResolvedValue({ id: 'gm1' });
+            prisma.groupMemory.findMany.mockResolvedValue([
+                { content: 'Team goal: run 5k', createdAt: new Date() },
+            ]);
+            const result = await executeTool('search_group_memories', {
+                groupId: 'g1', query: 'goal',
+            }, 'u1');
+            expect(result).toContain('Team goal: run 5k');
+        });
+
+        it('returns no results message', async () => {
+            prisma.groupMember.findFirst.mockResolvedValue({ id: 'gm1' });
+            prisma.groupMemory.findMany.mockResolvedValue([]);
+            const result = await executeTool('search_group_memories', {
+                groupId: 'g1', query: 'nonexistent',
+            }, 'u1');
+            expect(result).toContain('No group memories found');
         });
     });
 

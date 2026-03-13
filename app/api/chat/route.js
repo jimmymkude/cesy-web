@@ -8,6 +8,7 @@ const USER_SCOPED_TOOLS = [
     'save_memory', 'search_memories', 'update_memory', 'delete_memory',
     'set_reminder', 'cancel_reminder', 'get_calendar', 'manage_workout', 'set_timer',
     'send_notification', 'mark_workout_complete',
+    'save_group_memory', 'search_group_memories',
 ];
 
 // POST /api/chat — Send message to Claude with tool use support

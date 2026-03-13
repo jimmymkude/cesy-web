@@ -14,6 +14,8 @@ export function ChatProvider({ children }) {
     const [error, setError] = useState(null);
     const workoutRef = useRef(null);
     const dbUserIdRef = useRef(null);
+    const groupsRef = useRef([]);
+    const groupActivityRef = useRef([]);
     const pollingCleanupRef = useRef(null);
     const notifPermissionRef = useRef(false);
 
@@ -45,6 +47,20 @@ export function ChatProvider({ children }) {
                 if (workoutData.schedule) {
                     workoutRef.current = workoutData.schedule;
                 }
+
+                // Fetch groups
+                try {
+                    const groupsRes = await fetch(`/api/groups?userId=${dbUserIdRef.current}`);
+                    const groupsData = await groupsRes.json();
+                    if (groupsData.groups) groupsRef.current = groupsData.groups;
+                } catch { /* groups fetch failed — not critical */ }
+
+                // Fetch today's group activity
+                try {
+                    const activityRes = await fetch(`/api/groups/activity?userId=${dbUserIdRef.current}`);
+                    const activityData = await activityRes.json();
+                    if (activityData.groups) groupActivityRef.current = activityData.groups;
+                } catch { /* activity fetch failed — not critical */ }
             }
 
             // Start reminder polling once we have the userId
@@ -100,6 +116,34 @@ Get it right on the FIRST response — don't make the user correct you.`;
                 .map((w) => `- ${w.dayName}: ${w.workoutType}, ${w.duration} minutes${w.equipment?.length ? ` (Equipment: ${w.equipment.join(', ')})` : ''}`)
                 .join('\n');
             prompt += `\n\nThe user's current workout schedule is:\n${scheduleLines}\n\nReference this schedule when the user asks about their workouts. If they ask to modify it, output the full updated schedule in the required format.\n\nIMPORTANT: You have a background process that automatically sends personalized workout reminders via Telegram each day when a workout is scheduled. You do NOT need to set manual reminders for recurring workouts — they are handled automatically. If the user asks about workout reminders, let them know it's already taken care of.`;
+        }
+
+        // Broader assistant framing
+        prompt += `\n\nYou help with workouts, reminders, scheduling, shopping, web searches, and general conversation. You're an advanced personal assistant.`;
+
+        // Group memory tools
+        prompt += `\n\nYou have tools for shared group memories: save_group_memory (save something relevant to the whole group) and search_group_memories (recall group context). Use group IDs from the context below.`;
+
+        // Inject group context
+        if (groupsRef.current.length > 0) {
+            const groupLines = groupsRef.current.map((g) => {
+                const memberNames = g.members?.map((m) => m.user?.fullName || m.user?.username || 'Unknown').join(', ') || 'unknown';
+                return `- "${g.name}" (ID: ${g.id}, members: ${memberNames})`;
+            }).join('\n');
+            prompt += `\n\n👥 GROUPS — The user is in these groups:\n${groupLines}\nYou can reference group context naturally. Use group IDs when calling group memory tools.`;
+        }
+
+        // Inject today's group activity
+        if (groupActivityRef.current.length > 0) {
+            const activityLines = groupActivityRef.current
+                .filter((g) => g.logs.length > 0)
+                .map((g) => {
+                    const logList = g.logs.map((l) => `${l.userName}: ${l.workoutType}${l.duration ? ` (${l.duration} min)` : ''}`).join(', ');
+                    return `- ${g.name}: ${g.completedToday}/${g.totalMembers} done. ${logList}`;
+                }).join('\n');
+            if (activityLines) {
+                prompt += `\n\n🏋️ TODAY'S GROUP ACTIVITY:\n${activityLines}\nMention this naturally if relevant — e.g. motivate the user if others have already worked out.`;
+            }
         }
 
         if (user?.displayName) {
