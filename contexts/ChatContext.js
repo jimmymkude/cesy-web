@@ -121,8 +121,8 @@ Get it right on the FIRST response — don't make the user correct you.`;
         // Broader assistant framing
         prompt += `\n\nYou help with workouts, reminders, scheduling, shopping, web searches, and general conversation. You're an advanced personal assistant.`;
 
-        // Group memory tools — with strict usage boundary
-        prompt += `\n\nYou have tools for shared group memories: save_group_memory and search_group_memories. Use group IDs from the context below. CRITICAL: In this 1:1 conversation, NEVER use save_group_memory for personal topics. Only use it if the user explicitly asks you to save something to a specific group. For everything else (personal interests, preferences, questions the user asks you), always use save_memory — those are private.`;
+        // Group memory tools — read-only in individual chat
+        prompt += `\n\nYou can search shared group memories with search_group_memories to recall group context (goals, plans, decisions). Use group IDs from the context below. To SAVE a group memory, the user should use the group chat — you cannot save group memories from here.`;
 
         // Inject group context
         if (groupsRef.current.length > 0) {
