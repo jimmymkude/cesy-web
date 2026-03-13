@@ -16,8 +16,8 @@ const geistMono = localFont({
 });
 
 export const metadata = {
-  title: "Cesy — AI Fitness Assistant",
-  description: "Your AI-powered fitness assistant with voice interaction, personalized workout scheduling, and custom voice synthesis.",
+  title: "Cesy — AI Assistant",
+  description: "Your AI-powered assistant with voice interaction, personalized scheduling, memory, and group collaboration.",
   keywords: "AI assistant, fitness, workout, voice, personal trainer",
 };
 

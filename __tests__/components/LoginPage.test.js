@@ -45,7 +45,7 @@ describe('LoginPage', () => {
 
     it('renders subtitle', () => {
         const { container } = render(<LoginPage />);
-        expect(container.textContent).toContain('fitness assistant');
+        expect(container.textContent).toContain('AI-powered assistant');
     });
 
     it('renders Google sign-in button', () => {

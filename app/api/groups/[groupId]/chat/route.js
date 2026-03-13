@@ -149,7 +149,7 @@ async function buildGroupSystemPrompt(group, senderId) {
         ? groupMemories.map((m) => `- ${m.content}`).join('\n')
         : 'No group memories yet.';
 
-    return `You are Cesy, an AI fitness assistant in a group chat called "${group.name}".
+    return `You are Cesy, an AI assistant in a group chat called "${group.name}".
 You have the same warm, witty personality as always, but you're in a group setting.
 You can see everyone's workout schedules and help keep the group accountable.
 

@@ -64,7 +64,7 @@ function ChatArea() {
               </div>
               <h2 className="empty-state-title">Hey there!</h2>
               <p className="empty-state-description">
-                I&apos;m Cesy, your AI fitness assistant. Ask me about workouts, schedules, or anything fitness-related. I&apos;ll keep it short and witty.
+                I&apos;m Cesy, your AI assistant. Ask me about workouts, schedules, reminders, or just chat. I&apos;ll keep it short and witty.
               </p>
             </div>
           )}

@@ -51,7 +51,7 @@ export default function LoginPage() {
                         <Layers size={40} color="var(--color-accent)" strokeWidth={2.5} />
                     </div>
                     <h1 className="login-title">Welcome to Cesy</h1>
-                    <p className="login-subtitle">Your AI-powered fitness assistant</p>
+                    <p className="login-subtitle">Your AI-powered assistant</p>
                 </div>
 
                 <div className="sso-buttons">

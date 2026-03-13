@@ -98,7 +98,7 @@ export default function SettingsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     voiceId,
-                    text: 'Hey there! This is Cesy, your AI fitness assistant. Let\'s get moving!',
+                    text: 'Hey there! This is Cesy, your AI assistant. Let\'s get things done!',
                 }),
             });
             if (res.ok) {
