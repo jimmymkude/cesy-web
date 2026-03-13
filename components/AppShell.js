@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { MessageSquare, Dumbbell, Brain, Calendar, Settings, User, LogOut, Sun, Moon, Layers, Users } from 'lucide-react';
+import { MessageSquare, Dumbbell, Brain, Calendar, Settings, User, LogOut, Sun, Moon, Layers, Users, UsersRound } from 'lucide-react';
 
 const navItems = [
     {
@@ -20,6 +20,9 @@ const navItems = [
     },
     {
         id: 'friends', label: 'Friends', href: '/friends', icon: <Users size={20} strokeWidth={2} />
+    },
+    {
+        id: 'groups', label: 'Groups', href: '/groups', icon: <UsersRound size={20} strokeWidth={2} />
     },
     {
         id: 'settings', label: 'Settings', href: '/settings', icon: <Settings size={20} strokeWidth={2} />
