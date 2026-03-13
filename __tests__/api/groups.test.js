@@ -6,6 +6,7 @@ import { GET as getGroupDetail, DELETE as deleteGroup } from '@/app/api/groups/[
 import { GET as getInvites, PATCH as handleInvite } from '@/app/api/groups/invites/route';
 import { POST as inviteToGroup } from '@/app/api/groups/[groupId]/invite/route';
 import { PATCH as updateMember, DELETE as removeMember } from '@/app/api/groups/[groupId]/members/route';
+import { GET as getGroupMemories, DELETE as deleteGroupMemory } from '@/app/api/groups/[groupId]/memories/route';
 import { GET as getGroupActivity } from '@/app/api/groups/activity/route';
 import {
     GET as getGroupChat, POST as sendGroupChat, shouldCesyRespond,
@@ -43,6 +44,7 @@ jest.mock('@/lib/prisma', () => ({
         },
         groupMemory: {
             findMany: jest.fn(),
+            delete: jest.fn(),
         },
         workoutLog: {
             findMany: jest.fn(),
@@ -567,5 +569,58 @@ describe('/api/groups/activity', () => {
         const res = await getGroupActivity(req);
         const data = await res.json();
         expect(data.groups).toEqual([]);
+    });
+});
+
+describe('/api/groups/[groupId]/memories', () => {
+    beforeEach(() => jest.resetAllMocks());
+
+    it('GET returns 400 without userId', async () => {
+        const req = makeRequest('http://localhost/api/groups/g1/memories');
+        const res = await getGroupMemories(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(400);
+    });
+
+    it('GET returns 403 for non-members', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue(null);
+        const req = makeRequest('http://localhost/api/groups/g1/memories?userId=u1');
+        const res = await getGroupMemories(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(403);
+    });
+
+    it('GET returns group memories', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ userId: 'u1' });
+        prisma.groupMemory.findMany.mockResolvedValue([
+            { id: 'm1', content: 'Group goal: run 5k', tags: ['fitness'], createdAt: new Date() },
+        ]);
+        const req = makeRequest('http://localhost/api/groups/g1/memories?userId=u1');
+        const res = await getGroupMemories(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.memories).toHaveLength(1);
+        expect(data.memories[0].content).toBe('Group goal: run 5k');
+    });
+
+    it('DELETE returns 400 without userId or memoryId', async () => {
+        const req = makeRequest('http://localhost/api/groups/g1/memories?userId=u1', 'DELETE');
+        const res = await deleteGroupMemory(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(400);
+    });
+
+    it('DELETE returns 403 for non-admin', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ userId: 'u1', role: 'member' });
+        const req = makeRequest('http://localhost/api/groups/g1/memories?userId=u1&memoryId=m1', 'DELETE');
+        const res = await deleteGroupMemory(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(403);
+    });
+
+    it('DELETE succeeds for admin', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ userId: 'u1', role: 'admin' });
+        prisma.groupMemory.delete.mockResolvedValue({});
+        const req = makeRequest('http://localhost/api/groups/g1/memories?userId=u1&memoryId=m1', 'DELETE');
+        const res = await deleteGroupMemory(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.success).toBe(true);
     });
 });

@@ -233,6 +233,7 @@ export default function GroupDetailPage() {
     const memberIds = group.members.map((m) => m.userId);
     const availableFriends = friends.filter((f) => !memberIds.includes(f.id));
     const today = DAY_NAMES[new Date().getDay()];
+    const isAdmin = myMembership?.role === 'admin';
 
     return (
         <AppShell>
