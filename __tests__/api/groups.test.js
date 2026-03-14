@@ -7,6 +7,7 @@ import { GET as getInvites, PATCH as handleInvite } from '@/app/api/groups/invit
 import { POST as inviteToGroup } from '@/app/api/groups/[groupId]/invite/route';
 import { PATCH as updateMember, DELETE as removeMember } from '@/app/api/groups/[groupId]/members/route';
 import { GET as getGroupMemories, DELETE as deleteGroupMemory } from '@/app/api/groups/[groupId]/memories/route';
+import { POST as reactToMessage, ALLOWED_EMOJIS } from '@/app/api/groups/[groupId]/chat/reactions/route';
 import { GET as getGroupActivity } from '@/app/api/groups/activity/route';
 import {
     GET as getGroupChat, POST as sendGroupChat, shouldCesyRespond,
@@ -47,6 +48,11 @@ jest.mock('@/lib/prisma', () => ({
         },
         groupMemory: {
             findMany: jest.fn(),
+            delete: jest.fn(),
+        },
+        messageReaction: {
+            findUnique: jest.fn(),
+            create: jest.fn(),
             delete: jest.fn(),
         },
         workoutLog: {
@@ -743,5 +749,75 @@ describe('PATCH /api/groups/[groupId]', () => {
         expect(res.status).toBe(200);
         const data = await res.json();
         expect(data.group.cesyMode).toBe('keywords');
+    });
+});
+
+// ─── Reactions API tests ──────────────────────────────────────────
+describe('POST /api/groups/[groupId]/chat/reactions', () => {
+    beforeEach(() => jest.resetAllMocks());
+
+    it('returns 400 if missing required fields', async () => {
+        const req = makeRequest('http://localhost/api/groups/g1/chat/reactions', 'POST', { userId: 'u1' });
+        const res = await reactToMessage(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(400);
+    });
+
+    it('returns 400 for invalid emoji', async () => {
+        const req = makeRequest('http://localhost/api/groups/g1/chat/reactions', 'POST', {
+            userId: 'u1', messageId: 'm1', emoji: '🤡'
+        });
+        const res = await reactToMessage(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(400);
+    });
+
+    it('returns 403 if not a group member', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue(null);
+        const req = makeRequest('http://localhost/api/groups/g1/chat/reactions', 'POST', {
+            userId: 'u1', messageId: 'm1', emoji: '👍'
+        });
+        const res = await reactToMessage(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(403);
+    });
+
+    it('returns 404 if message not found in group', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ userId: 'u1' });
+        prisma.groupMessage.findFirst.mockResolvedValue(null);
+        const req = makeRequest('http://localhost/api/groups/g1/chat/reactions', 'POST', {
+            userId: 'u1', messageId: 'm1', emoji: '👍'
+        });
+        const res = await reactToMessage(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(404);
+    });
+
+    it('adds a reaction when none exists', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ userId: 'u1' });
+        prisma.groupMessage.findFirst.mockResolvedValue({ id: 'm1', groupId: 'g1' });
+        prisma.messageReaction.findUnique.mockResolvedValue(null);
+        prisma.messageReaction.create.mockResolvedValue({ id: 'r1', messageId: 'm1', userId: 'u1', emoji: '👍' });
+        const req = makeRequest('http://localhost/api/groups/g1/chat/reactions', 'POST', {
+            userId: 'u1', messageId: 'm1', emoji: '👍'
+        });
+        const res = await reactToMessage(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        expect(data.action).toBe('added');
+    });
+
+    it('removes a reaction when it already exists (toggle off)', async () => {
+        prisma.groupMember.findUnique.mockResolvedValue({ userId: 'u1' });
+        prisma.groupMessage.findFirst.mockResolvedValue({ id: 'm1', groupId: 'g1' });
+        prisma.messageReaction.findUnique.mockResolvedValue({ id: 'r1', messageId: 'm1', userId: 'u1', emoji: '👍' });
+        prisma.messageReaction.delete.mockResolvedValue({});
+        const req = makeRequest('http://localhost/api/groups/g1/chat/reactions', 'POST', {
+            userId: 'u1', messageId: 'm1', emoji: '👍'
+        });
+        const res = await reactToMessage(req, { params: Promise.resolve({ groupId: 'g1' }) });
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.action).toBe('removed');
+    });
+
+    it('exports allowed emojis list', () => {
+        expect(ALLOWED_EMOJIS).toEqual(['👍', '❤️', '😂', '🔥', '👏', '😮']);
     });
 });

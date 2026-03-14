@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell';
 import LoginPage from '@/components/LoginPage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X, Brain, Trash2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Send, Users, MessageSquare, Dumbbell, UserPlus, Shield, ToggleLeft, ToggleRight, LogOut, Crown, X, Brain, Trash2, Sparkles, SmilePlus } from 'lucide-react';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -22,6 +22,7 @@ export default function GroupDetailPage() {
     const [friends, setFriends] = useState([]);
     const [groupMemories, setGroupMemories] = useState([]);
     const [inviting, setInviting] = useState(null);
+    const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
     const [myMembership, setMyMembership] = useState(null);
@@ -191,6 +192,20 @@ export default function GroupDetailPage() {
         } catch { /* ignore */ }
     };
 
+    const REACTION_EMOJIS = ['👍', '❤️', '😂', '🔥', '👏', '😮'];
+
+    const reactToMessage = async (messageId, emoji) => {
+        setReactionPickerMsgId(null);
+        try {
+            const res = await fetch(`/api/groups/${groupId}/chat/reactions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: dbUserId, messageId, emoji }),
+            });
+            if (res.ok) loadMessages();
+        } catch { /* ignore */ }
+    };
+
     const leaveGroup = async () => {
         if (!confirm('Are you sure you want to leave this group?')) return;
         try {
@@ -337,9 +352,52 @@ export default function GroupDetailPage() {
                                         >
                                             {msg.content}
                                         </div>
-                                        <div className={`group-msg-time ${isSelf ? 'text-right' : ''}`}>
-                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {/* Reaction pills */}
+                                        {msg.reactions && msg.reactions.length > 0 && (
+                                            <div className="reaction-pills">
+                                                {Object.entries(
+                                                    msg.reactions.reduce((acc, r) => {
+                                                        acc[r.emoji] = acc[r.emoji] || { count: 0, userReacted: false };
+                                                        acc[r.emoji].count++;
+                                                        if (r.userId === dbUserId) acc[r.emoji].userReacted = true;
+                                                        return acc;
+                                                    }, {})
+                                                ).map(([emoji, { count, userReacted }]) => (
+                                                    <button
+                                                        key={emoji}
+                                                        className={`reaction-pill${userReacted ? ' reaction-pill-active' : ''}`}
+                                                        onClick={() => reactToMessage(msg.id, emoji)}
+                                                    >
+                                                        {emoji} {count}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {/* Reaction trigger + picker */}
+                                        <div className="reaction-row">
+                                            <div className={`group-msg-time ${isSelf ? 'text-right' : ''}`}>
+                                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                            <button
+                                                className="reaction-trigger"
+                                                onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.id ? null : msg.id)}
+                                            >
+                                                <SmilePlus size={14} />
+                                            </button>
                                         </div>
+                                        {reactionPickerMsgId === msg.id && (
+                                            <div className="reaction-picker">
+                                                {REACTION_EMOJIS.map((emoji) => (
+                                                    <button
+                                                        key={emoji}
+                                                        className="reaction-picker-emoji"
+                                                        onClick={() => reactToMessage(msg.id, emoji)}
+                                                    >
+                                                        {emoji}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

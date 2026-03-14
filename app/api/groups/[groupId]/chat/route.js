@@ -259,6 +259,11 @@ export async function GET(request, { params }) {
             },
             orderBy: { createdAt: 'desc' },
             take: limit,
+            include: {
+                reactions: {
+                    select: { id: true, userId: true, emoji: true },
+                },
+            },
         });
 
         return NextResponse.json({ messages: messages.reverse() });

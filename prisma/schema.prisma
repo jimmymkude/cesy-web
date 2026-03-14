@@ -46,6 +46,7 @@ model UserProfile {
   sentGroupInvites       GroupInvite[]  @relation("GroupInviter")
   receivedGroupInvites   GroupInvite[]  @relation("GroupInvitee")
   groupMessages          GroupMessage[]
+  messageReactions       MessageReaction[]
 
   @@map("user_profiles")
 }
@@ -260,10 +261,25 @@ model GroupMessage {
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 
-  group Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user  UserProfile? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  group     Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      UserProfile?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reactions MessageReaction[]
 
   @@map("group_messages")
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  emoji     String   // e.g. "👍", "❤️", "😂"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message GroupMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    UserProfile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("message_reactions")
 }
 
 model GroupMemory {
